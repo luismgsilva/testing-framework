@@ -48,7 +48,7 @@ def file_management(root_, module_directory_, prefix_, options)
 
   %w[toolchain toolchain/build].each { |dir| Dir.mkdir (root + dir) }
 
-  prefix = (options.prefix.to_s.empty?) ? root + "/install/" : options.prefix.to_s
+  prefix = ((options.prefix.to_s.empty?) ? root + "/install/" : options.prefix.to_s) # + "/#{get_current_date}/"
 
   prefix_ << prefix
   root_ << root
@@ -57,11 +57,11 @@ def file_management(root_, module_directory_, prefix_, options)
 end
 
 
-def create_module_file(module_directory, name)
+def create_module_file(module_directory, prefix, name)
   
   module_file_directory = module_directory + "/#{name}/"
   Dir.mkdir(module_file_directory) if ! File.directory? (module_file_directory)
-  
+   
   template = ERB.new(File.read("toolchain.module.erb"))
   File.open(module_file_directory + get_current_date() + '.lua', 'w') do |f|
     f.write template.result(binding)
@@ -87,17 +87,12 @@ def main()
   puts module_directory
   puts prefix
 
-
   for arc in data
    
-    create_module_file(module_directory, arc[0].to_s)
+    create_module_file(module_directory, prefix, arc[0].to_s)
 
     create_build_directory(root, arc[0].to_s)
-
-    execute = process_env(arc[1]['execute'], prefix)
-
-    #execute = process_env(arc[1]['execute'], 
-     #                     (options.prefix.to_s.empty?) ? get_prefix_default() : options.prefix)
+    execute = process_env(arc[1]['execute'], "#{prefix}/#{arc[0].to_s}/#{get_current_date}/")
     system(execute)
 
     
