@@ -1,0 +1,12 @@
+{
+	"toolchain-linux-arc64": {
+		"execute": "/scratch/luiss/project/toolchain/arc-gnu-toolchain/configure --prefix=$env(PREFIX)/arc64_linux --target=arc64 --enable-linux ; make -j32",
+		"module-template" : "toolchain.module.erb"
+	},
+	"buildroot-arc64" : {
+
+	},
+	"qemu" : {
+
+	}
+}

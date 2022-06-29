@@ -1,0 +1,6 @@
+whatis("ARC: myModuleVersion()")
+whatis("Version: myModuleVersion()")
+
+local pkg = pathJoin("/scratch/luiss/arc-tools/install/toolchain", myModuleName(), myModuleVersion())
+prepend_path("PATH", pathJoin(pkg, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(pkg, "lib"))
