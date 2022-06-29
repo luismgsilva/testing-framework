@@ -9,10 +9,6 @@ def get_current_date()
   return Date.today.to_s.delete!'-'
 end
 
-def get_prefix_default()
-  return get_default + "/install"
-end
-
 def get_default()
   return "/scratch/luiss/arc-tools/"
 end
@@ -83,9 +79,6 @@ def main()
   prefix = ""
 
   file_management(root, module_directory, prefix, options) 
-  puts root
-  puts module_directory
-  puts prefix
 
   for arc in data
    
