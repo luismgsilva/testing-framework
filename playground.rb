@@ -4,6 +4,7 @@ require 'erb'
 require 'json'
 require 'optparse'
 require 'ostruct'
+require 'git'
 
 def get_current_date()
   return Date.today.to_s.delete!'-'
@@ -24,6 +25,7 @@ def get_options()
     opt.on('--prefix PREFIX') { |o| options.prefix = o }
     opt.on('--module MODULE') { |o| options.module = o }
     opt.on('--arc-tools ARC-TOOLS') { |o| options.arctools = o }
+    opt.on('--target TARGET') { |o| options.target = o }
   end.parse!
   return options
 end
@@ -79,9 +81,13 @@ def main()
   prefix = ""
 
   file_management(root, module_directory, prefix, options) 
+  
+  if !options.target.to_s.empty?
+    data = data.select { |target| target == options.target.to_s } 
+  end
 
   for arc in data
-   
+    
     create_module_file(module_directory, prefix, arc[0].to_s)
 
     create_build_directory(root, arc[0].to_s)
@@ -89,7 +95,6 @@ def main()
     system(execute)
 
     
-    exit
   end
 end
 
