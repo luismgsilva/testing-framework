@@ -1,0 +1,7 @@
+{
+	":execute": "",
+	":root":"",
+	":module": "",
+	":prefix": "a",
+	":module-template": "toolchain.module.erb"
+}
