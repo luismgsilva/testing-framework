@@ -1,7 +1,7 @@
 {
 	"toolchain-linux-arc64": {
 		"git": "https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain",
-		"execute": "/scratch/luiss/project/toolchain/arc-gnu-toolchain/configure --prefix=$env(PREFIX)/toolchain-linux-arc64 --target=arc64 --enable-linux ; make -j32",
+		"execute": "/scratch/luiss/project/toolchain/arc-gnu-toolchain/configure --prefix=$env(PREFIX) --target=arc64 --enable-linux ; make -j32",
 		"module-template" : "toolchain.module.erb"
 	},
 	"toolchain-baremetal-arc64": {

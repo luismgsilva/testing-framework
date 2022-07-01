@@ -1,12 +1,16 @@
 #!/usr/bin/env ruby
 require 'json'
 require 'erb'
+require 'date'
 
 class Directory_Manager
   def initialize()
-    #create_directories(config)
   end
   
+  def get_version()
+    return Date.today.to_s.delete! '-'
+  end
+
   def create_directories(config)
     Dir.mkdir(config.get(':root')) if ! File.directory? (config.get(':root'))
     Dir.mkdir(config.get(':modulefile')) if ! File.directory? (config.get(':modulefile'))
@@ -26,7 +30,7 @@ class Directory_Manager
 
     template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
     prefix = "#{config.get(':prefix')}"
-    File.open("#{module_dir}/date.lua", 'w') do |f|
+    File.open("#{module_dir}/#{get_version()}.lua", 'w') do |f|
       f.write template.result(binding)
     end
 
@@ -77,6 +81,7 @@ class OptionParser
     tmp = argv.shift
     @opts.store(:command, :init)  if (tmp =~ /init/)
     @opts.store(:command, :build) if (tmp =~ /build/)
+    @opts.store(:command, :help) if (tmp =~ /help/) or (tmp =~ /h/)
   end
 
   def get(key)
@@ -86,65 +91,70 @@ class OptionParser
 end
 
 class Manager
-  def initialize(config, manager)
-    @config = config
-    @manager = manager
+  def initialize()
   end
 
-  def convert()
-    data = File.read("#{Dir.getwd}/workload/config.json")
-    data = JSON.parse(data)
-    
-    @manager.create_directories(@config)
+  def init()
+    Config.new().create_default_config()
+  end
+  
+  def build()
+    config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/config")))
+    dir_manager = Directory_Manager.new()
 
-    for d in data
-      @manager.create_module_file(@config, d[0])
-      @manager.create_build_dir(@config, d[0])
-      #Dir.chdir("#{@config.get(':root')}/toolchain/build/#{d[0]}")
-    
-      execute = process_env(d[1]['execute'], 'PREFIX', @config.get(':prefix'))
+    compiler(config, dir_manager)
+  end
+
+  def help()
+    puts 'HELP ME'
+  end
+
+  
+  def get_data()
+    return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"))
+  end
+  
+  def compiler(config, dir_manager)
+    data = get_data()
+    dir_manager.create_directories(config)
+
+    for tool in data
+      name = tool[0]
+      dir_manager.create_module_file(config, name)
+      dir_manager.create_build_dir(config, name)
+
+      execute = process_env(tool[1]['execute'], 'PREFIX', "#{config.get(':prefix')}/#{name}/#{Date.today.to_s.delete! '-'}")
       puts execute
       system(execute)
       exit
     end 
-    puts data
   end
-
 
   def process_env(str, name, subs)
     return str.gsub(/\$env\((#{name})\)/) do |m|
       subs
     end
+  end
+end
 
+class Main
+  def initialize()
+    opts = OptionParser.new(ARGV)
+    manager = Manager.new()
+    main(opts, manager)
   end
 
+  def main(opts, manager)
+    case opts.get(:command)
+    when :init
+      manager.init()
+    when :build
+      manager.build()
+    when :help
+      manager.help()
+    end
+    
+  end
 end
-opts = OptionParser.new(ARGV)
 
-case opts.get(:command)
-when :init
-  Config.new().create_default_config()
-when :build
-  config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/config")))
-  puts config.get_config()
-  #Directory_Manager.new(config)
-  #Manager.new(config).convert()
-  Manager.new(config, Directory_Manager.new(),).convert()
-end
-
-
-
-#config = Config.new(file, opts)
-
-#config.set(':root', opts.get(':root'))
-
-
-#dir = Directory_Manager.new(config)
-#puts config.print_()
-
-#jsonified = JSON.generate(config.get_config())
-
-#File.open('aqi.json', 'w') do |f|
-#  f.write jsonified
-#end
-
+Main.new()
