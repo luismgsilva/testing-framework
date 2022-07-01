@@ -144,6 +144,8 @@ class Manager
   def compiler(config, dir_manager)
     data = get_data()
     dir_manager.create_directories(config)
+    
+    main_root = Dir.getwd
 
     for tool in data
       name = tool[0]
@@ -153,7 +155,8 @@ class Manager
       execute = process_env(tool[1]['execute'], 'PREFIX', "#{config.get(':prefix')}/#{name}/#{Date.today.to_s.delete! '-'}")
       puts execute
       system(execute)
-      exit
+
+      Dir.chdir(main_root)
     end 
   end
 
