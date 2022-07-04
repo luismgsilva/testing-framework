@@ -46,6 +46,7 @@ class Config
 
   def create_default_config()
     git = 'https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain'
+    branch = 'master'
     root = '/scratch/luiss/arc-tools/'
     prefix = "#{root}/install/"
     modulefile = "#{root}/modulefiles/"
@@ -128,6 +129,8 @@ class Manager
       config.set(:modulefile, "#{path}/modulefiles")
     when 'git'
       config.set(:git, "#{path}")
+    when 'branch'
+      config.set(:branch, "#{path}")
     end
 
 
@@ -150,17 +153,15 @@ class Manager
     return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"), symbolize_names: true)
   end
   
+
   def compiler(config, dir_manager)
     data = get_data()
     dir_manager.create_directories(config)
     
     main_root = Dir.getwd
-    
-    # TESTING
-    git = "#{config.get(:git)}"
-    root = "#{config.get(:root)}"
-    Git.clone(git, "#{root}/toolchain/arc-gnu-toolchain")
-    
+  
+    Git.clone("#{config.get(:git)}", "#{config.get(:root)}/toolchain/arc-gnu-toolchain.#{config.get(:branch)}" , branch:"#{config.get(:branch)}")
+      
     data.each do |tool, command|
       
       name = tool
