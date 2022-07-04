@@ -2,6 +2,7 @@
 require 'json'
 require 'erb'
 require 'date'
+require 'git'
 
 class Directory_Manager
   def initialize()
@@ -44,6 +45,7 @@ class Config
   end
 
   def create_default_config()
+    git = 'https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain'
     root = '/scratch/luiss/arc-tools/'
     prefix = "#{root}/install/"
     modulefile = "#{root}/modulefiles/"
@@ -100,6 +102,8 @@ class Manager
   def init()
     Config.new().create_default_config()
   end
+
+
   
   def build()
     config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/user.config.json"), symbolize_names: true))
@@ -122,6 +126,8 @@ class Manager
       config.set(:prefix, "#{path}/install")
     when 'modulefile'
       config.set(:modulefile, "#{path}/modulefiles")
+    when 'git'
+      config.set(:git, "#{path}")
     end
 
 
@@ -133,12 +139,15 @@ class Manager
 
 
   def help()
-    puts 'Im definitely not helping you.'
+    puts './playground build'
+    puts './playground set root=/path/to/root/ (Changing the root directory modifies automatically all directories)'
+    puts './playground set prefix=/path/to/prefix/'
+    puts './playground set modulefile=/path/to/modulefiles/'
   end
 
   
   def get_data()
-    return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"))
+    return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"), symbolize_names: true)
   end
   
   def compiler(config, dir_manager)
@@ -146,13 +155,22 @@ class Manager
     dir_manager.create_directories(config)
     
     main_root = Dir.getwd
-
-    for tool in data
-      name = tool[0]
+    
+    # TESTING
+    git = "#{config.get(:git)}"
+    root = "#{config.get(:root)}"
+    Git.clone(git, "#{root}/toolchain/arc-gnu-toolchain")
+    
+    data.each do |tool, command|
+      
+      name = tool
       dir_manager.create_module_file(config, name)
       dir_manager.create_build_dir(config, name)
-
-      execute = process_env(tool[1]['execute'], 'PREFIX', "#{config.get(:prefix)}/#{name}/#{Date.today.to_s.delete! '-'}")
+     
+      
+      execute = command[:execute]
+      execute = process_env(execute, 'ROOT', "#{config.get(:root)}") 
+      execute = process_env(execute, 'PREFIX', "#{config.get(:prefix)}/#{name}/#{Date.today.to_s.delete! '-'}")
       puts execute
       system(execute)
 
