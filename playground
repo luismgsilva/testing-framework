@@ -7,30 +7,35 @@ require 'git'
 class Directory_Manager
   def initialize()
   end
-  
+  # Gets Current date to define as version
   def get_version()
     return Date.today.to_s.delete! '-'
   end
-
+  
+  # Creates all main directories 
   def create_directories(config)
     Dir.mkdir(config.get(:root)) if ! File.directory? (config.get(:root))
     Dir.mkdir(config.get(:modulefile)) if ! File.directory? (config.get(:modulefile))
     %w[/toolchain/ /toolchain/build].each { |dir| Dir.mkdir (config.get(:root) + dir) }
     puts 'Directories Created'
   end
-
+  # Creates Build directory with current tool data
   def create_build_dir(config, name)
     build_dir = "#{config.get(:root)}/toolchain/build/#{name}/"
     Dir.mkdir(build_dir) if !File.directory? (build_dir)
     Dir.chdir(build_dir)
   end
-  
+  # Creates a default module file with the right directory
   def create_module_file(config, name)
+    # Creates directory to Module File
     module_dir = "#{config.get(:modulefile)}/#{name}/"
     Dir.mkdir(module_dir) if !File.directory? (module_dir)
-
+    
+    # Gets default module file from template and alters the prefix accordingly to the chosen by User
     template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
     prefix = "#{config.get(:prefix)}"
+    
+    # Writes the Module File
     File.open("#{module_dir}/#{get_version()}.lua", 'w') do |f|
       f.write template.result(binding)
     end
@@ -43,7 +48,8 @@ class Config
   def initialize(file = nil)
     @config = file
   end
-
+  
+  # Creates default User Config
   def create_default_config()
     git = 'https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain'
     branch = 'master'
@@ -51,24 +57,28 @@ class Config
     prefix = "#{root}/install/"
     modulefile = "#{root}/modulefiles/"
     
+    # Writes data to new default User Config file
     File.open("#{Dir.getwd}/workload/user.config.json", 'w') do |f|
       f.write ERB.new(File.read("#{Dir.getwd}/workload/configuration.erb")).result(binding)
     end
-    puts 'File Created'
   end
-
+  
+  # Sets Value to Key
   def set(key, value)
     @config.store(key, value)
   end
   
+  # Gets Value from Key
   def get(key)
     @config[key] 
   end
   
+  # Verifies if hash contains Key (Unused)
   def contains(key)
     @config.has_key(key)
   end
 
+  # Gets Hash 
   def get_config()
     @config
   end
@@ -80,6 +90,7 @@ class OptionParser
     @opts = {}
     set(argv)
   end
+  # Responsable for User input
   def set(argv)
     tmp = argv.shift
     @opts.store(:command, :init)  if (tmp =~ /init/)
@@ -89,35 +100,47 @@ class OptionParser
     @opts.store(:command, :set) if (tmp =~ /set/)
     @opts.store(:set, argv.shift) if (tmp =~ /set/)
   end
-
+  # Gets selected value from key
   def get(key)
    @opts[key]
   end
 
 end
 
+class Git_Manager
+  # Clones selected repo from GitHub
+  def get_repo(repo, root, branch)
+    Git.clone(repo, root, branch: "#{branch}")
+  end
+end
+
 class Manager
   def initialize()
   end
-
+  
   def init()
+    # Creates default User Config
     Config.new().create_default_config()
   end
-
-
   
   def build()
+    # Reads the User Config file
     config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/user.config.json"), symbolize_names: true))
+    # Initialization of instances
     dir_manager = Directory_Manager.new()
+    git_manager = Git_Manager.new()
 
-    compiler(config, dir_manager)
+    compiler(config, dir_manager, git_manager)
   end
 
   def set(str)
+    # Reads the User Config file
     config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/user.config.json"), symbolize_names: true))
-    command = str.split('=').first
-    path = str.split('=').last
-    puts command
+    # Splits the command              (e.g. prefix=path)
+    command = str.split('=').first  # (prefix)
+    path = str.split('=').last      # (path)
+    
+    # Alters path accordingly to the set chosen by user 
     case command
     when 'root'
       config.set(:root, "#{path}")
@@ -134,18 +157,30 @@ class Manager
     end
 
 
-
+    # Stores file with new data provided by user
     File.open("#{Dir.getwd}/workload/user.config.json", 'w') do |f|
       f.write config.get_config().to_json
     end
   end
 
-
   def help()
-    puts './playground build'
-    puts './playground set root=/path/to/root/ (Changing the root directory modifies automatically all directories)'
-    puts './playground set prefix=/path/to/prefix/'
-    puts './playground set modulefile=/path/to/modulefiles/'
+    puts 'usage: ./playground [version] [h] [help] [build] [set <key-to-alter>=<path>]'
+    puts ''
+    puts 'These are commands to define different attributes'
+    puts ''
+    puts 'Start a working area'
+    puts '   init            Creates default User Config File'
+    puts ''
+    puts 'Run the Framework'
+    puts '   build           Creates all the necessary procedures and install the chosen tools'
+    puts ''
+    puts 'Diffrent Keys to alter in [set <key-to-alter>=<path>]'
+    puts '   root            Path to the main directory'
+    puts '   prefix          Path to install tool'
+    puts '   modulefile      Path to create the Module Files accordingly to the selected tool'
+    puts '   git             URL of the Git repository to clone from GitHub'
+    puts '   branch          Branch of the chosen Git repository to clone from Github'
+    
   end
 
   
@@ -155,30 +190,36 @@ class Manager
   
 
   def compiler(config, dir_manager)
+    # Gets Data from json file
     data = get_data()
+    # Creates main directories (root, prefix, modulefiles)
     dir_manager.create_directories(config)
-    
+    # Saves current directory
     main_root = Dir.getwd
-  
-    Git.clone("#{config.get(:git)}", "#{config.get(:root)}/toolchain/arc-gnu-toolchain.#{config.get(:branch)}" , branch:"#{config.get(:branch)}")
-      
+    # Gets repo from git using a specific branch
+    git_manager.get_repo("#{config.get(:git)}", 
+                         "#{config.get(:root)}/toolchain/arc-gnu-toolchain.#{config.get(:branch)}", 
+                         branch:"#{config.get(:branch)}")
+    
+    # Loop for each tool to be compiled
     data.each do |tool, command|
-      
-      name = tool
-      dir_manager.create_module_file(config, name)
-      dir_manager.create_build_dir(config, name)
+      # Creates Module File with current tool data
+      dir_manager.create_module_file(config, tool)
+      # Creates Build directory with corrent tool data
+      dir_manager.create_build_dir(config, tool)
      
-      
+      # Alters the execute command to function accordingly to the current tool and directories chosen by user
       execute = command[:execute]
       execute = process_env(execute, 'ROOT', "#{config.get(:root)}") 
       execute = process_env(execute, 'PREFIX', "#{config.get(:prefix)}/#{name}/#{Date.today.to_s.delete! '-'}")
-      puts execute
       system(execute)
-
+      
+      # Resets back to directory
       Dir.chdir(main_root)
     end 
   end
-
+  
+  # Replaces portions of string to specfic data
   def process_env(str, name, subs)
     return str.gsub(/\$env\((#{name})\)/) do |m|
       subs
@@ -193,6 +234,7 @@ class Main
     main(opts, manager)
   end
 
+  # Main function responsable for setting up the next events
   def main(opts, manager)
     case opts.get(:command)
     when :init
