@@ -4,38 +4,45 @@ require 'erb'
 require 'date'
 require 'git'
 
+
+$SOURCE = "#{Dir.getwd}"
+
 class Directory_Manager
-  def initialize()
-  end
   # Gets Current date to define as version
   def get_version()
     return Date.today.to_s.delete! '-'
   end
   
   # Creates all main directories 
-  def create_directories(config)
-    Dir.mkdir(config.get(:root)) if ! File.directory? (config.get(:root))
-    Dir.mkdir(config.get(:modulefile)) if ! File.directory? (config.get(:modulefile))
-    %w[/toolchain/ /toolchain/build].each { |dir| Dir.mkdir (config.get(:root) + dir) }
-    puts 'Directories Created'
+  def create_directories()
+    %w[/modulefiles/ /toolchain/ /toolchain/build].each { |dir| Dir.mkdir ($SOURCE + dir) }
   end
   # Creates Build directory with current tool data
   def create_build_dir(config, name)
-    build_dir = "#{config.get(:root)}/toolchain/build/#{name}/"
+    build_dir = "#{$SOURCE}/toolchain/build/#{name}"
+    Dir.mkdir(build_dir) if !File.directory? (build_dir)
+    build_dir = "#{build_dir}/#{get_version()}"
     Dir.mkdir(build_dir) if !File.directory? (build_dir)
     Dir.chdir(build_dir)
   end
-  # Creates a default module file with the right directory
-  def create_module_file(config, name)
-    # Creates directory to Module File
-    module_dir = "#{config.get(:modulefile)}/#{name}/"
+  
+  def create_module_file(prefix, name)
+    #module_dir = "#{config.get(:modulefile)}/#{name}/"
+    module_dir = "#{$SOURCE}/modulefiles/#{name}/"
     Dir.mkdir(module_dir) if !File.directory? (module_dir)
     
-    # Gets default module file from template and alters the prefix accordingly to the chosen by User
-    template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
-    prefix = "#{config.get(:prefix)}"
+    #template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
+    #prefix = "#{config.get(:prefix)}"
     
-    # Writes the Module File
+    template = ERB.new <<-EOF
+    whatis("ARC: myModuleName()")
+    whatis("Version: myModuleVersion()")
+
+    local pkg = pathJoin("<%= prefix %>", myModuleName(), myModuleVersion())
+    prepend_path("PATH", pathJoin(pkg, "bin"))
+    prepend_path("LD_LIBRARY_PATH", pathJoin(pkg, "lib"))
+    EOF
+
     File.open("#{module_dir}/#{get_version()}.lua", 'w') do |f|
       f.write template.result(binding)
     end
@@ -45,22 +52,29 @@ class Directory_Manager
 end
 
 class Config
-  def initialize(file = nil)
-    @config = file
-  end
-  
-  # Creates default User Config
-  def create_default_config()
-    git = 'https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain'
-    branch = 'master'
-    root = '/scratch/luiss/arc-tools/'
-    prefix = "#{root}/install/"
-    modulefile = "#{root}/modulefiles/"
+  def initialize(file = nil, dir_manager = nil)
     
-    # Writes data to new default User Config file
-    File.open("#{Dir.getwd}/workload/user.config.json", 'w') do |f|
-      f.write ERB.new(File.read("#{Dir.getwd}/workload/configuration.erb")).result(binding)
+    unless file.nil?
+      file = JSON.parse(File.read(file), symbolize_names: true)
+      tmp = {}
+      tmp.store(:params, "")
+      tmp.store(:builder, file)
+
+      #DELETE
+      tmp_ = {}
+      tmp.store(:params, tmp_)
+      #DELETE
+      
+      dir_manager.create_directories()
+      
+
+      File.open(".config.json", 'w') do |f|
+        f.write JSON.pretty_generate(tmp)
+      end
+    else
+      @config = JSON.parse(File.read(".config.json"), symbolize_names: true)
     end
+    #@config = file
   end
   
   # Sets Value to Key
@@ -73,11 +87,6 @@ class Config
     @config[key] 
   end
   
-  # Verifies if hash contains Key (Unused)
-  def contains(key)
-    @config.has_key(key)
-  end
-
   # Gets Hash 
   def get_config()
     @config
@@ -93,7 +102,8 @@ class OptionParser
   # Responsable for User input
   def set(argv)
     tmp = argv.shift
-    @opts.store(:command, :init)  if (tmp =~ /init/)
+    @opts.store(:command, :init) && @opts.store(:file, argv.shift)  if (tmp =~ /init/)
+    
     @opts.store(:command, :build) if (tmp =~ /build/)
     @opts.store(:command, :help) if (tmp =~ /help/) or (tmp =~ /h/)
     
@@ -109,8 +119,11 @@ end
 
 class Git_Manager
   # Clones selected repo from GitHub
-  def get_repo(repo, root, branch)
-    Git.clone(repo, root, branch: "#{branch}")
+  def get_repo(git_to_clone)
+    repo = git_to_clone[:repo]
+    branch = git_to_clone[:branch]
+    workplace = "#{$SOURCE}/toolchain/arc-gnu-toolchain"
+    Git.clone(repo, workplace , branch: "#{branch}")
   end
 end
 
@@ -118,68 +131,60 @@ class Manager
   def initialize()
   end
   
-  def init()
-    # Creates default User Config
-    Config.new().create_default_config()
+  def init(file)
+    Config.new(file, Directory_Manager.new())
   end
   
   def build()
     # Reads the User Config file
-    config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/user.config.json"), symbolize_names: true))
+    config = Config.new()
     # Initialization of instances
-    dir_manager = Directory_Manager.new()
     git_manager = Git_Manager.new()
+    dir_manager = Directory_Manager.new()
 
-    compiler(config, dir_manager, git_manager)
+    compiler(config, git_manager, dir_manager)
   end
 
   def set(str)
     # Reads the User Config file
-    config = Config.new(JSON.parse(File.read("#{Dir.getwd}/workload/user.config.json"), symbolize_names: true))
+    config = Config.new()
     # Splits the command              (e.g. prefix=path)
     command = str.split('=').first  # (prefix)
     path = str.split('=').last      # (path)
     
     # Alters path accordingly to the set chosen by user 
     case command
-    when 'root'
-      config.set(:root, "#{path}")
-      config.set(:prefix, "#{path}/install")
-      config.set(:modulefile, "#{path}/modulefiles")
     when 'prefix'
-      config.set(:prefix, "#{path}/install")
-    when 'modulefile'
-      config.set(:modulefile, "#{path}/modulefiles")
-    when 'git'
-      config.set(:git, "#{path}")
-    when 'branch'
-      config.set(:branch, "#{path}")
+      puts config.get_config()
+      params = config.get(:params)
+      params.store(:prefix, "#{path}/install")
+      config.set(:params, params)
     end
 
 
     # Stores file with new data provided by user
-    File.open("#{Dir.getwd}/workload/user.config.json", 'w') do |f|
-      f.write config.get_config().to_json
+    File.open('.config.json', 'w') do |f| 
+      f.write JSON.pretty_generate(config.get_config())
     end
   end
 
   def help()
-    puts 'usage: ./playground [version] [h] [help] [build] [set <key-to-alter>=<path>]'
-    puts ''
-    puts 'These are commands to define different attributes'
-    puts ''
-    puts 'Start a working area'
-    puts '   init            Creates default User Config File'
-    puts ''
-    puts 'Run the Framework'
-    puts '   build           Creates all the necessary procedures and install the chosen tools'
-    puts ''
-    puts 'Diffrent Keys to alter in [set <key-to-alter>=<path>]'
-    puts '   root            Path to the main directory'
-    puts '   prefix          Path to install tool'
-    puts '   modulefile      Path to create the Module Files accordingly to the selected tool'
-    puts '   git             URL of the Git repository to clone from GitHub'
-    puts '   branch          Branch of the chosen Git repository to clone from Github'
+    puts <<-EOF
+    
+    usage: ./playground [h] [help] [build] [init <config-file.json] [set <key-to-alter>=<path>]
+
+    These are commands to define different attributes
+    
+    Start a working area
+        init      Creates environment with given config.json file
+    
+    Run the Framework
+        build     Creates all the necessary procedures and install the chosen tools
+    
+    Different Keys to alter in [set <key-to-alter>=<path>]
+        prefix    Path to install root
+  
+    EOF
     
   end
 
@@ -188,33 +193,39 @@ class Manager
     return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"), symbolize_names: true)
   end
   
+  def check_env(str)
+    if str =~ /\$env\(([^)]+)\)/
+      puts "ERROR: Variable #{$1} not set"
+      exit
+    end
+  end 
+  
+  def compiler(config, git_manager, dir_manager)
 
-  def compiler(config, dir_manager)
-    # Gets Data from json file
-    data = get_data()
-    # Creates main directories (root, prefix, modulefiles)
-    dir_manager.create_directories(config)
-    # Saves current directory
-    main_root = Dir.getwd
-    # Gets repo from git using a specific branch
-    git_manager.get_repo("#{config.get(:git)}", 
-                         "#{config.get(:root)}/toolchain/arc-gnu-toolchain.#{config.get(:branch)}", 
-                         branch:"#{config.get(:branch)}")
+    #dir_manager.create_directories()
+    data = config.get(:builder)
+    params = config.get(:params)
     
     # Loop for each tool to be compiled
     data.each do |tool, command|
-      # Creates Module File with current tool data
-      dir_manager.create_module_file(config, tool)
-      # Creates Build directory with corrent tool data
-      dir_manager.create_build_dir(config, tool)
-     
-      # Alters the execute command to function accordingly to the current tool and directories chosen by user
-      execute = command[:execute]
-      execute = process_env(execute, 'ROOT', "#{config.get(:root)}") 
-      execute = process_env(execute, 'PREFIX', "#{config.get(:prefix)}/#{name}/#{Date.today.to_s.delete! '-'}")
-      system(execute)
       
-      # Resets back to directory
+      execute = command[:execute]
+    
+      execute = process_env(execute, '@SOURCE', "#{$SOURCE}/toolchain/arc-gnu-toolchain/")
+      params.each do |key, value| 
+#        execute = process_env(execute, key.to_s.upcase, value)
+        execute = process_env(execute, key.to_s.upcase, (key == :prefix) ? "#{value}/#{tool}/#{Date.today.to_s.delete! '-'}" : value)
+      end
+      check_env(execute)
+            
+      git_manager.get_repo(command[:git]) # PODE DAR EXCEPTION
+      dir_manager.create_module_file(params[:prefix], tool)
+      dir_manager.create_build_dir(config, tool)
+      puts execute
+
+      system(execute)
+      exit
+    
       Dir.chdir(main_root)
     end 
   end
@@ -238,7 +249,7 @@ class Main
   def main(opts, manager)
     case opts.get(:command)
     when :init
-      manager.init()
+      manager.init(opts.get(:file))
     when :build
       manager.build()
     when :set
