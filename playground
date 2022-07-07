@@ -12,11 +12,12 @@ class Directory_Manager
   def get_version()
     return Date.today.to_s.delete! '-'
   end
-  
-  # Creates all main directories 
+
+  # Creates all main directories
   def create_directories()
     %w[/modulefiles/ /toolchain/ /toolchain/build].each { |dir| Dir.mkdir ($SOURCE + dir) }
   end
+
   # Creates Build directory with current tool data
   def create_build_dir(config, name)
     build_dir = "#{$SOURCE}/toolchain/build/#{name}"
@@ -25,15 +26,18 @@ class Directory_Manager
     Dir.mkdir(build_dir) if !File.directory? (build_dir)
     Dir.chdir(build_dir)
   end
-  
+
   def create_module_file(prefix, name)
-    #module_dir = "#{config.get(:modulefile)}/#{name}/"
     module_dir = "#{$SOURCE}/modulefiles/#{name}/"
+#    version = prefix.split('/')[-1]
+ #   name = prefix.split('/')[-2]
+
+  #  module_dir = "#{$SOURCE}/
     Dir.mkdir(module_dir) if !File.directory? (module_dir)
-    
+
     #template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
     #prefix = "#{config.get(:prefix)}"
-    
+
     template = ERB.new <<-EOF
     whatis("ARC: myModuleName()")
     whatis("Version: myModuleVersion()")
@@ -52,8 +56,8 @@ class Directory_Manager
 end
 
 class Config
-  def initialize(file = nil, dir_manager = nil)
-    
+  def initialize(file = nil, env_manager = nil)
+
     unless file.nil?
       file = JSON.parse(File.read(file), symbolize_names: true)
       tmp = {}
@@ -65,8 +69,9 @@ class Config
       tmp.store(:params, tmp_)
       #DELETE
       
-      dir_manager.create_directories()
-      
+
+      #VERIFICAR
+      env_manager.check_env_global(tmp[:builder])
 
       File.open(".config.json", 'w') do |f|
         f.write JSON.pretty_generate(tmp)
@@ -76,18 +81,18 @@ class Config
     end
     #@config = file
   end
-  
+
   # Sets Value to Key
   def set(key, value)
     @config.store(key, value)
   end
-  
+
   # Gets Value from Key
   def get(key)
-    @config[key] 
+    @config[key]
   end
-  
-  # Gets Hash 
+
+  # Gets Hash
   def get_config()
     @config
   end
@@ -103,18 +108,110 @@ class OptionParser
   def set(argv)
     tmp = argv.shift
     @opts.store(:command, :init) && @opts.store(:file, argv.shift)  if (tmp =~ /init/)
-    
-    @opts.store(:command, :build) if (tmp =~ /build/)
+
+    @opts.store(:command, :build) && @opts.store(:build, argv.shift) if (tmp =~ /build/)
+
     @opts.store(:command, :help) if (tmp =~ /help/) or (tmp =~ /h/)
-    
+    @opts.store(:command, :env_list) if (tmp =~ /env_list/)
+    #@opts.store(:command, :env_set) if (tmp =~ /env/)
+
     @opts.store(:command, :set) if (tmp =~ /set/)
     @opts.store(:set, argv.shift) if (tmp =~ /set/)
   end
   # Gets selected value from key
   def get(key)
    @opts[key]
-  end
+end
 
+end
+
+
+class Env_Manager
+
+    def verify_if_env_exists(builder, command)
+        arr = get_env_from_json(builder)
+        return arr.include? command.upcase
+    end
+
+    def env_list()
+        config = Config.new()
+        env_list = get_env_from_json(config.get(:builder))
+        params = config.get(:params).keys
+        
+        params.map! { |p| p.to_s.upcase } 
+                
+        env_list.select! { |p| p !~ /\@/ }
+
+        env_list.each do |e|
+          if ! params.include? (e)
+            puts "\nEnvironment Variable #{e} not defined\n\n"
+          else
+            value = e.downcase.to_sym
+            hash = config.get(:params)
+            puts "\nEnvironment Variable #{e} defined: #{hash[value]}\n\n"
+          end
+          
+        end
+         
+        
+    end
+
+    def check_env_global(builder)
+        envs = get_env_from_json(builder)
+        envs.select! { |a| a =~ /\@/ }
+        
+        envs = get_global_env_matching(envs)
+        
+        if ! envs.empty?
+            puts <<-EOF
+            ERROR: Intern variable/s #{envs} not defined.
+            You may try: #{global_variables[0..3]}
+            EOF
+            exit
+        end
+    end
+
+    def get_global_env_matching(env)
+        arr = []
+        env.each do |e|
+            tmp = e.gsub("@", "$").to_sym
+            arr.append(e) if !global_variables.include? (tmp)
+        end
+        return arr
+    end
+
+    def get_env_variables(str)
+        exprex = /\$env\(([^)]+)\)/
+        if str =~ exprex
+          return str.scan(exprex).flatten
+        end
+    end
+
+    def get_env_from_json(builder)
+        arr = []
+        builder.each do |key, value|
+         env_variables = get_env_variables(value[:execute])
+            arr.append(env_variables) if env_variables != nil
+          end
+        return arr.flatten.uniq
+    end
+    
+    def check_if_set(execute)
+      envs = get_env_variables(execute)
+      if !envs.nil?
+        envs.each do |a|
+          puts "ERROR: variable/s #{a} not set"
+        end
+        return false
+      end
+      return true
+    end
+
+    def process_env(str, name, subs)
+      return str.gsub(/\$env\((#{name})\)/) do |m|
+        subs
+      end
+    end   
 end
 
 class Git_Manager
@@ -128,42 +225,49 @@ class Git_Manager
 end
 
 class Manager
-  def initialize()
+  def initialize
+    @env_manager = Env_Manager.new()
   end
-  
+
   def init(file)
-    Config.new(file, Directory_Manager.new())
+    Config.new(file, @env_manager)
   end
   
-  def build()
+  def env_list()
+    @env_manager.env_list()
+  end
+
+  def build(filter = nil)
     # Reads the User Config file
     config = Config.new()
     # Initialization of instances
     git_manager = Git_Manager.new()
     dir_manager = Directory_Manager.new()
 
-    compiler(config, git_manager, dir_manager)
+    compiler(config, git_manager, dir_manager, filter)
   end
 
+
   def set(str)
-    # Reads the User Config file
     config = Config.new()
-    # Splits the command              (e.g. prefix=path)
-    command = str.split('=').first  # (prefix)
-    path = str.split('=').last      # (path)
-    
-    # Alters path accordingly to the set chosen by user 
-    case command
-    when 'prefix'
-      puts config.get_config()
-      params = config.get(:params)
-      params.store(:prefix, "#{path}/install")
-      config.set(:params, params)
+    command = str.split('=').first.downcase
+    path = str.split('=').last
+
+    if command =~ /[\@]/
+      puts 'ERROR: not a editable variable'
+      exit
     end
 
+    if ! @env_manager.verify_if_env_exists(config.get(:builder), command)
+      puts "ERROR: #{command.upcase} not a ENV variable"
+      exit
+    end
 
-    # Stores file with new data provided by user
-    File.open('.config.json', 'w') do |f| 
+    params = config.get(:params)
+    params.store(command, "#{path}")
+    config.set(:params, params)
+
+    File.open('.config.json', 'w') do |f|
       f.write JSON.pretty_generate(config.get_config())
     end
   end
@@ -171,53 +275,64 @@ class Manager
   def help()
     puts <<-EOF
     
-    usage: ./playground [h] [help] [build] [init <config-file.json] [set <key-to-alter>=<path>]
+    usage: ./playground [h] [help] [build] [env_list] [init <config-file.json] [set <key-to-alter>=<path>]
 
     These are commands to define different attributes
-    
+
     Start a working area
         init      Creates environment with given config.json file
-    
+
     Run the Framework
         build     Creates all the necessary procedures and install the chosen tools
-    
+
     Different Keys to alter in [set <key-to-alter>=<path>]
         prefix    Path to install root
-  
+
     EOF
-    
+
   end
 
-  
+
   def get_data()
     return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"), symbolize_names: true)
   end
-  
-  def check_env(str)
-    if str =~ /\$env\(([^)]+)\)/
-      puts "ERROR: Variable #{$1} not set"
-      exit
-    end
-  end 
-  
-  def compiler(config, git_manager, dir_manager)
 
-    #dir_manager.create_directories()
-    data = config.get(:builder)
-    params = config.get(:params)
-    
-    # Loop for each tool to be compiled
-    data.each do |tool, command|
-      
-      execute = command[:execute]
-    
-      execute = process_env(execute, '@SOURCE', "#{$SOURCE}/toolchain/arc-gnu-toolchain/")
-      params.each do |key, value| 
-#        execute = process_env(execute, key.to_s.upcase, value)
-        execute = process_env(execute, key.to_s.upcase, (key == :prefix) ? "#{value}/#{tool}/#{Date.today.to_s.delete! '-'}" : value)
+  def to_filter(data, filter)
+    if !filter.nil?
+      if data.include?(filter.to_sym)
+        data << data.select! { |k, v| k.eql?(filter.to_sym) }
+      else
+        return false
       end
-      check_env(execute)
-            
+    end
+  end
+
+    def compiler(config, git_manager, dir_manager, filter)
+  
+      data = config.get(:builder)
+      params = config.get(:params)
+
+      if !filter.nil?
+        if data.include?(filter.to_sym)
+          data.select! { |k, v| k.eql?(filter.to_sym) }
+        else 
+          puts "Option not valid"
+          exit
+        end
+      end
+  
+      # Loop for each tool to be compiled
+      data.each do |tool, command|
+  
+        execute = command[:execute]
+        execute = @env_manager.process_env(execute, '@SOURCE', "#{$SOURCE}/toolchain/arc-gnu-toolchain/")
+        params.each do |key, value|
+          execute = @env_manager.process_env(execute, key.to_s.upcase, value)
+        end
+
+        exit if !@env_manager.check_if_set(execute)
+
+      dir_manager.create_directories()
       git_manager.get_repo(command[:git]) # PODE DAR EXCEPTION
       dir_manager.create_module_file(params[:prefix], tool)
       dir_manager.create_build_dir(config, tool)
@@ -225,17 +340,9 @@ class Manager
 
       system(execute)
       exit
-    
-      Dir.chdir(main_root)
-    end 
-  end
-  
-  # Replaces portions of string to specfic data
-  def process_env(str, name, subs)
-    return str.gsub(/\$env\((#{name})\)/) do |m|
-      subs
     end
   end
+
 end
 
 class Main
@@ -251,14 +358,16 @@ class Main
     when :init
       manager.init(opts.get(:file))
     when :build
-      manager.build()
+      manager.build(opts.get(:build))
     when :set
       manager.set(opts.get(:set))
+    when :env_list
+      manager.env_list()
     when :help
       manager.help()
     end
-    
+  
+    end
   end
-end
-
-Main.new()
+  
+  Main.new()
