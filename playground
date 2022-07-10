@@ -15,10 +15,6 @@ class Directory_Manager
 
   # Creates all main directories
   def create_directories()
-    #%w[/modulefiles/ /tools/ /tools/build].each {
-    #  |dir| Dir.mkdir ($SOURCE + dir) if !File.directory? ($SOURCE + dir) 
-    #}
-
     %w[/modulefiles/ /tools/ /tools/build].each do |dir|
       Dir.mkdir ($SOURCE + dir) if !File.directory? ($SOURCE + dir)
     end
@@ -34,7 +30,13 @@ class Directory_Manager
     Dir.chdir(build_dir)
   end
 
-  def create_module_file(prefix)
+  def create_module_file(prefix, module_template)
+   
+    if !File.exists? (module_template)
+      p "Module template file not found: #{module_template}"
+      exit
+    end
+
     exprex = /\/(.+)\/(.+)\/(.+)$/
     arr = prefix.match(exprex)
     prefix = $1
@@ -44,20 +46,8 @@ class Directory_Manager
     module_dir = "#{$SOURCE}/modulefiles/#{name}/"
     Dir.mkdir(module_dir) if !File.directory? (module_dir)
     
-    p module_dir 
-
-    #template = ERB.new(File.read("#{Dir.getwd}/workload/toolchain.module.erb"))
-    #prefix = "#{config.get(:prefix)}"
-
-    template = ERB.new <<-EOF
-    whatis("ARC: myModuleName()")
-    whatis("Version: myModuleVersion()")
-
-    local pkg = pathJoin("<%= prefix %>", myModuleName(), myModuleVersion())
-    prepend_path("PATH", pathJoin(pkg, "bin"))
-    prepend_path("LD_LIBRARY_PATH", pathJoin(pkg, "lib"))
-    EOF
-
+    template = ERB.new(File.read(module_template))
+    
     File.open("#{module_dir}/#{version}.lua", 'w') do |f|
       f.write template.result(binding)
     end
@@ -329,6 +319,7 @@ class Manager
   
     data = config.get(:builder)
     params = config.get(:params)
+      
 
     if !filter.nil?
       if data.include?(filter.to_sym)
@@ -338,36 +329,12 @@ class Manager
         exit
       end
     end
-
-      
-      
-      #DELETE
-=begin 
-      data.each do |tool, command|
-        command.each do |key, value|
-          envs = @env_manager.get_env_variables(value)
-          if !envs.nil?
-            envs.each do |env|
-              p "Command[key] - #{command[key]}"
-              p "env - #{env}"
-              p "params[env.downcase.to_sym] - #{env.downcase.to_sym}"
-              puts ""
-              execute = @env_manager.process_env(command[key], env, params[env.downcase.to_sym])
-              p execute
-            end
-          end
-        end
-        exit
-      end
-      exit
-      #DELETE
-=end
-      
       #DELETE
     data.each do |tool, command|
 
       params.store(:prefix, "#{params[:prefix]}/#{tool}/#{params[:version]}") if !params[:prefix].nil?
-
+      
+      
 
       params.each do |param, value|
         command.each do |com, value2|
@@ -379,24 +346,14 @@ class Manager
         end
       end
     exit if !@env_manager.check_if_set(command)
+    
     execute = command[:execute]
 
-=begin
-    exit
-      #DELETE
-      # Loop for each tool to be compiled
-    execute = @env_manager.process_env(execute, '@SOURCE', "#{$SOURCE}/tools/arc-gnu-toolchain/")
-    params.each do |key, value|
-      execute = @env_manager.process_env(execute, key.to_s.upcase, value)
-    end
-    puts execute 
-    exit
-      #  exit if !@env_manager.check_if_set(execute)
-    exit if !@env_manager.check_if_set(command)
-=end
     dir_manager.create_directories()
     git_manager.get_repo(command[:git]) # PODE DAR EXCEPTION
-    dir_manager.create_module_file(params[:prefix])
+    
+    dir_manager.create_module_file(params[:prefix], command[:module_template]) if command.has_key? (:module_template)
+
     dir_manager.create_build_dir(config, tool)
     puts execute
     
