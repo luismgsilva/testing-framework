@@ -19,19 +19,30 @@ class Directory_Manager
   end
   # Creates all main directories
   def create_directories(name, version)
-    paths = ["#{$SOURCE}/modulefiles/#{name}",
-            "#{$SOURCE}/tools/build/#{name}/#{version}",
-            "#{$SOURCE}/tools/logs/#{name}/#{version}"]
+    paths = [
+            #"#{$SOURCE}/modulefiles/#{name}",
+            "#{$SOURCE}/modulefiles/",
+            #"#{$SOURCE}/tools/build/#{name}/#{version}",
+            "#{$SOURCE}/tools/build/#{name}",
+            #"#{$SOURCE}/tools/.logs/#{name}/#{version}"
+            "#{$SOURCE}/tools/.logs/#{name}"]
   
     paths.each { |path| create_dir(path) }
   end
-  
-  def create_module_file(prefix, module_template)
-   
-    if !File.exists? (module_template)
-      p "Module template file not found: #{module_template}"
+ 
+  def check_module_file module_template 
+    if !File.exists? module_template
+      puts "ERROR: Module template file not found: #{module_template}"
       exit
     end
+  end
+
+  def create_module_file(prefix, module_template)
+   
+  #  if !File.exists? (module_template)
+  #    p "Module template file not found: #{module_template}"
+  #    exit
+  #  end
 
     exprex = /\/(.+)\/(.+)\/(.+)$/
     arr = prefix.match(exprex)
@@ -40,7 +51,7 @@ class Directory_Manager
     version = $3
 
     module_dir = "#{$SOURCE}/modulefiles/#{name}/"
-#    Dir.mkdir(module_dir) if !File.directory? (module_dir)
+    Dir.mkdir(module_dir) if !File.directory? (module_dir)
 
     template = ERB.new(File.read(module_template))
     
@@ -143,11 +154,11 @@ class Env_Manager
 
         env_list.each do |e|
           if ! params.include? (e)
-            puts "\nEnvironment Variable #{e} not defined\n\n"
+            puts "Environment Variable #{e} not defined"
           else
             value = e.downcase.to_sym
             hash = config.get(:params)
-            puts "\nEnvironment Variable #{e} defined: #{hash[value]}\n\n"
+            puts "Environment Variable #{e} defined: #{hash[value]}"
           end
         end
     end
@@ -236,7 +247,6 @@ class Git_Manager
     end
 
     git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
-    
     isCloned = system(git)
     if !isCloned
       puts <<-EOF
@@ -296,7 +306,7 @@ class Status_Manager
 
  attr_reader :status
  def initialize
-    @path_to_status = "#{$SOURCE}/tools/logs/.status.json"
+    @path_to_status = "#{$SOURCE}/tools/.logs/.status.json"
     @status = (!File.file? @path_to_status) ?
       {} : JSON.parse(File.read(@path_to_status), symbolize_names: true)
   end
@@ -338,7 +348,7 @@ class Manager
   
   def log(name_version)
      
-    path_from = "#{$SOURCE}/tools/logs/#{name_version}/make.log"
+    path_from = "#{$SOURCE}/tools/.logs/#{name_version}/make.log"
     path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
     to_execute = "cp #{path_from} #{path_to}"
     system(to_execute)
@@ -457,28 +467,33 @@ class Manager
     
     dir_manager.create_directories(tool, version) # params[:version])
 
-    git_manager.get_clone() # PODE DAR EXCEPTION
+    git_manager.get_clone() 
 
-    dir_manager.create_module_file(prefix, command[:module_template]) if command.has_key? (:module_template)
+    #dir_manager.create_module_file(prefix, command[:module_template]) if command.has_key? (:module_template)
+    dir_manager.check_module_file(command[:module_template]) if command.has_key? :module_template
 
-    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{version}")
-    
-    path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{version}/make.log"
+   # Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{version}")
+    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}") 
+
+    #path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{version}/make.log"
+    path_make_log = "#{$SOURCE}/tools/.logs/#{tool}/make.log"
     out = File.open(path_make_log, 'w')
     puts "Installing #{tool}.."
     status = system(execute, out: out, err: out)
     out.close()
-
-    status_msg = status ? 'Installation Successful' : 'Error Occorred. Check logs'
-    p status_msg 
+    
+    Dir.chdir($SOURCE)
+    status_msg = status ? "Installation Successful" : "Error Occorred. Check logs"
+    puts status_msg 
+    dir_manager.create_module_file(prefix, command[:module_template]) if status and command.has_key? :module_template
     define_status(tool, status_msg)
 
-    Dir.chdir($SOURCE)
+   # Dir.chdir($SOURCE)
     end
   end
 
   def define_status(tool, status_msg)
-    path_to_status = "#{$SOURCE}/tools/logs/.status.json"
+    path_to_status = "#{$SOURCE}/tools/.logs/.status.json"
     logs = (!File.file? path_to_status) ?
       {} : JSON.parse(File.read(path_to_status), symbolize_names: true)
     logs.store(tool, status_msg)
