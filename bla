@@ -236,7 +236,15 @@ class Git_Manager
     end
 
     git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
-    system(git) 
+    
+    isCloned = system(git)
+    if !isCloned
+      puts <<-EOF
+\nERROR: Something went wrong.
+       Hint: Verify Git Repository URL.
+      EOF
+      exit
+    end
   end
 
   def if_already_exists(path_to_clone)
@@ -244,14 +252,16 @@ class Git_Manager
   end
 
   def fetch_repo(path_to_clone)
-    begin
     to_execute = "git fetch #{path_to_clone}"
-    system(to_execute)
-    rescue => a
-      return false
+    isFetched = system(to_execute)
+
+    if !isFetched
+      puts <<-EOF
+\nERROR: Something went wrong.
+       Hint: Verify Git Repository URL
+      EOF
+      exit
     end
-    
-    return true
   end
   
   def check_up_to_date(repo)
@@ -332,9 +342,10 @@ class Manager
     path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
     to_execute = "cp #{path_from} #{path_to}"
     system(to_execute)
+
   
-    to_execute = "cat #{path_from}"
-    system(to_execute)
+#    to_execute = "cat #{path_from}"
+    #system(to_execute)
   end
  
   def repo_list()
