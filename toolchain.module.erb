@@ -1,0 +1,6 @@
+whatis("ARC:myModuleName()")
+whatis("Version:myModuleVersion()")
+
+local pkg = pathJoin("<%=prefix %>", myModuleName(), myModuleVersion())
+prepend_path("PATH", pathJoin(pkg, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(pkg, "lib"))

@@ -53,7 +53,7 @@ end
 class Config
   def initialize(file = nil, env_manager = nil)
 
-  unless file.nil?
+    unless file.nil?
       file = get_json(file)
       
       config = {}
@@ -117,6 +117,7 @@ class OptionParser
     @opts.store(:command, :env_list) if (tmp =~ /env_list/)
     @opts.store(:command, :set) && @opts.store(:set, argv.shift) if (tmp =~ /set/)
     @opts.store(:command, :repo_list) if tmp =~ /repo_list/
+    @opts.store(:command, :status) && @opts.store(:status, argv.shift) if tmp =~ /status/
   end
  
   def get(key)
@@ -219,17 +220,14 @@ end
 class Git_Manager
   # Clones selected repo from GitHub
   
+  attr_reader :name
+
   def set_git(git_info)
     @repo = git_info[:repo]
     @branch = git_info[:branch]
     @name = get_repo_name(@repo)
     @path_to_clone = "#{$SOURCE}/tools/#{@name}"
   end
-
-  def get_name()
-    @name
-  end
-
 
   def get_clone()
     
@@ -238,7 +236,7 @@ class Git_Manager
     end
 
     git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
-    system(git)
+    system(git) 
   end
 
   def if_already_exists(path_to_clone)
@@ -284,16 +282,46 @@ class Git_Manager
   end
 end
 
+class Status_Manager
+
+ attr_reader :status
+ def initialize
+    @path_to_status = "#{$SOURCE}/tools/logs/.status.json"
+    @status = (!File.file? @path_to_status) ?
+      {} : JSON.parse(File.read(@path_to_status), symbolize_names: true)
+  end
+  
+  def set_status tool, status_msg
+    @status.store(tool, status_msg)
+    File.open(@path_to_status, 'w') do |f|
+      f.write JSON.pretty_generate(@status)
+    end
+  end
+
+end
+
 class Manager
   def initialize
     @env_manager = Env_Manager.new()
     @git_manager = Git_Manager.new()
+    @status_manager = Status_Manager.new()
   end
 
   def init(file)
     Config.new(file, @env_manager)
   end
   
+  def status(tool)
+    if tool.nil?
+      status = @status_manager.status
+      status.each { |k, v| puts "#{k}: #{v}" }
+    else
+      status = @status_manager.status[tool.to_sym]
+      puts status
+    end
+  end
+
+
   def env_list()
     @env_manager.env_list()
   end
@@ -346,9 +374,6 @@ class Manager
 
     config.set_json()
 
-   # File.open('.config.json', 'w') do |f|
-   #   f.write JSON.pretty_generate(config.get_config())
-   # end
   end
 
   def help()
@@ -392,45 +417,64 @@ class Manager
 
     data = filter_tool(data, to_filter)
     
-
-    original_prefix = params[:prefix]
+    
+    internal_params = params
+   
+    prefix  = internal_params[:prefix]
+    version = internal_params[:version]
 
     data.each do |tool, command|
       
-      params.store(:prefix, "#{params[:prefix]}/#{tool}/#{params[:version]}") if !params[:prefix].nil?
-      git_manager.set_git(command[:git])  
-      
+      prefix_path_to_store = "#{prefix}/#{tool}/#{version}" 
+      internal_params.store(:prefix, prefix_path_to_store) if !prefix.nil?
+      prefix = internal_params[:prefix]
 
-      params.each do |param, value|
+      git_manager.set_git(command[:git])  
+      internal_params.store(:@SOURCE, "#{$SOURCE}/tools/#{git_manager.name}")
+
+      internal_params.each do |param, value|
         command.each do |com, value2|
           next if value2.class == Hash
-          tmp = value2
-          tmp = @env_manager.process_env(tmp, "@SOURCE", "#{$SOURCE}/tools/#{git_manager.get_name()}")
-          tmp = @env_manager.process_env(tmp, param.to_s.upcase, value)
-          command.store(com, tmp)
+          processed_env = @env_manager.process_env(value2, param.to_s.upcase, value)
+          command.store(com, processed_env)
         end
       end
+
     exit if !@env_manager.check_if_set(command)
     
     execute = command[:execute]
     
-    dir_manager.create_directories(tool, params[:version])
+    dir_manager.create_directories(tool, version) # params[:version])
 
     git_manager.get_clone() # PODE DAR EXCEPTION
 
-    dir_manager.create_module_file(params[:prefix], command[:module_template]) if command.has_key? (:module_template)
+    dir_manager.create_module_file(prefix, command[:module_template]) if command.has_key? (:module_template)
 
-    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{params[:version]}")
-    puts execute
+    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{version}")
     
-    path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{params[:params]}/make.log"
-    system("#{execute} > #{path_make_log} ")
+    path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{version}/make.log"
+    out = File.open(path_make_log, 'w')
+    puts "Installing #{tool}.."
+    status = system(execute, out: out, err: out)
+    out.close()
 
-    params.store(:prefix, original_prefix) 
+    status_msg = status ? 'Installation Successful' : 'Error Occorred. Check logs'
+    p status_msg 
+    define_status(tool, status_msg)
+
     Dir.chdir($SOURCE)
-
     end
   end
+
+  def define_status(tool, status_msg)
+    path_to_status = "#{$SOURCE}/tools/logs/.status.json"
+    logs = (!File.file? path_to_status) ?
+      {} : JSON.parse(File.read(path_to_status), symbolize_names: true)
+    logs.store(tool, status_msg)
+    File.open(path_to_status, 'w') do |f|
+      f.write JSON.pretty_generate(logs)
+    end
+  end 
 end
 
 class Main
@@ -454,7 +498,8 @@ class Main
     when :repo_list
       manager.repo_list()
     when :list
-
+    when :status
+      manager.status(opts.get(:status))
     when :log
       manager.log(opts.get(:log))
     when :help
