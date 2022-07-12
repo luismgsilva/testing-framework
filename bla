@@ -1,0 +1,469 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'erb'
+require 'date'
+require 'git'
+
+$SOURCE = "#{Dir.getwd}"
+
+class Directory_Manager
+  # Gets Current date to define as version
+
+  def create_dir(path)
+    recursive = path.split('/')
+    path = ''
+    recursive.each do |dir|
+      path += dir + '/'
+      system("mkdir #{path}") unless File.directory? (path)
+    end
+  end
+  # Creates all main directories
+  def create_directories(name, version)
+    paths = ["#{$SOURCE}/modulefiles/#{name}",
+            "#{$SOURCE}/tools/build/#{name}/#{version}",
+            "#{$SOURCE}/tools/logs/#{name}/#{version}"]
+  
+    paths.each { |path| create_dir(path) }
+  end
+  
+  def create_module_file(prefix, module_template)
+   
+    if !File.exists? (module_template)
+      p "Module template file not found: #{module_template}"
+      exit
+    end
+
+    exprex = /\/(.+)\/(.+)\/(.+)$/
+    arr = prefix.match(exprex)
+    prefix = $1
+    name = $2
+    version = $3
+
+    module_dir = "#{$SOURCE}/modulefiles/#{name}/"
+#    Dir.mkdir(module_dir) if !File.directory? (module_dir)
+
+    template = ERB.new(File.read(module_template))
+    
+    File.open("#{module_dir}/#{version}.lua", 'w') do |f|
+      f.write template.result(binding)
+    end
+  end
+end
+
+class Config
+  def initialize(file = nil, env_manager = nil)
+
+  unless file.nil?
+      file = get_json(file)
+      
+      config = {}
+      config.store(:params, "")
+      config.store(:builder, file)
+
+      #DELETE
+      tmp = {}
+      config.store(:params, tmp)
+      #DELETE
+
+      #VERIFICAR
+      env_manager.check_env_global(config[:builder])
+      
+      set_json(config)
+    else
+      @config = get_json()
+    end
+  end
+ 
+  def get_json(file = '.config.json')
+    return JSON.parse(File.read(file), symbolize_names: true)
+  end 
+
+  def set_json(config = @config)
+    Dir.chdir $SOURCE
+    File.open('.config.json', 'w') do |f|
+      f.write JSON.pretty_generate(config)
+    end
+  end
+  
+  # Sets Value to Key
+  def set(key, value)
+    @config.store(key, value)
+  end
+
+  # Gets Value from Key
+  def get(key)
+    @config[key]
+  end
+
+  # Gets Hash
+  def get_config()
+    @config
+  end
+
+end
+
+class OptionParser
+  def initialize(argv)
+    @opts = {}
+    set(argv)
+  end
+  # Responsable for User input
+  def set(argv)
+    tmp = argv.shift
+    @opts.store(:command, :init) && @opts.store(:file, argv.shift)  if (tmp =~ /init/)
+    @opts.store(:command, :build) && @opts.store(:build, argv.shift) if (tmp =~ /build/)
+    @opts.store(:command, :log) && @opts.store(:log, argv.shift) if (tmp =~ /log/)
+    @opts.store(:command, :help) if (tmp =~ /help/) or (tmp =~ /h/)
+    @opts.store(:command, :env_list) if (tmp =~ /env_list/)
+    @opts.store(:command, :set) && @opts.store(:set, argv.shift) if (tmp =~ /set/)
+    @opts.store(:command, :repo_list) if tmp =~ /repo_list/
+  end
+ 
+  def get(key)
+   @opts[key]
+  end
+end
+
+
+class Env_Manager
+
+    def verify_if_env_exists(builder, command)
+        arr = get_env_from_json(builder)
+        return arr.include? command.upcase
+    end
+
+    def env_list()
+        config = Config.new()
+        env_list = get_env_from_json(config.get(:builder))
+        params = config.get(:params).keys
+        
+        params.map! { |p| p.to_s.upcase }            
+        env_list.select! { |p| p !~ /\@/ }
+
+        env_list.each do |e|
+          if ! params.include? (e)
+            puts "\nEnvironment Variable #{e} not defined\n\n"
+          else
+            value = e.downcase.to_sym
+            hash = config.get(:params)
+            puts "\nEnvironment Variable #{e} defined: #{hash[value]}\n\n"
+          end
+        end
+    end
+
+    def check_env_global(builder)
+        envs = get_env_from_json(builder)
+        
+        envs.select! { |a| a =~ /\@/ }
+        envs = get_global_env_matching(envs)
+        
+        if ! envs.empty?
+            puts <<-EOF
+            ERROR: Intern variable/s #{envs} not defined.
+            You may try: #{global_variables[0..3]}
+            EOF
+            exit
+        end
+    end
+
+    def get_global_env_matching(env)
+        arr = []
+        env.each do |e|
+            tmp = e.gsub("@", "$").to_sym
+            arr.append(e) if !global_variables.include? (tmp)
+        end
+        return arr
+    end
+
+    def get_env_variables(str)
+        exprex = /\$env\(([^)]+)\)/
+        if str =~ exprex
+          return str.scan(exprex).flatten
+        end
+    end
+
+    def get_env_from_json(builder)
+        arr = []
+        builder.each do |key, value|
+          value.each do |key2, value2|
+            env_variables = get_env_variables(value2)
+            arr.append(env_variables) if env_variables != nil
+          end
+        end
+        return arr.flatten.uniq
+    end
+    
+    def check_if_set(command)
+      is_set = true
+      command.each do |key, value|  
+        envs = get_env_variables(value)
+        if !envs.nil?
+          envs.select! { |env| env !~ /\@/ }
+          envs.each do |a|
+            puts "ERROR: variable/s #{a} not set"
+          end
+          is_set = false
+        end
+      end
+
+      return is_set
+    end
+
+    def process_env(str, name, subs)
+      return str.gsub(/\$env\((#{name})\)/) do |m|
+        subs
+      end
+    end   
+end
+
+class Git_Manager
+  # Clones selected repo from GitHub
+  
+  def set_git(git_info)
+    @repo = git_info[:repo]
+    @branch = git_info[:branch]
+    @name = get_repo_name(@repo)
+    @path_to_clone = "#{$SOURCE}/tools/#{@name}"
+  end
+
+  def get_name()
+    @name
+  end
+
+
+  def get_clone()
+    
+    if File.directory? (@path_to_clone)
+      return
+    end
+
+    git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
+    system(git)
+  end
+
+  def if_already_exists(path_to_clone)
+    return File.directory? @path_to_clone   
+  end
+
+  def fetch_repo(path_to_clone)
+    begin
+    to_execute = "git fetch #{path_to_clone}"
+    system(to_execute)
+    rescue => a
+      return false
+    end
+    
+    return true
+  end
+  
+  def check_up_to_date(repo)
+    path = "#{$SOURCE}/tools/#{repo}"
+    Dir.chdir path
+
+    output_exec = `git status -uno`
+    puts output_exec
+  
+    return output_exec =~ /up\sto\sdate/
+  end
+
+  def get_repo_list()
+    repos = Dir.glob("#{$SOURCE}/tools/*/.git")
+    repos.map! { |repo| repo.split('/')[-2] }
+    repos.each do |repo|
+      puts "\n\n" + repo + ":"
+      check_up_to_date(repo)
+    end
+
+  end
+
+  def get_repo_name(repo)
+    exprex = /\.git/
+    name = repo.split('/').last
+    name = name.gsub(exprex, '') if name =~ exprex
+    return name
+  end
+end
+
+class Manager
+  def initialize
+    @env_manager = Env_Manager.new()
+    @git_manager = Git_Manager.new()
+  end
+
+  def init(file)
+    Config.new(file, @env_manager)
+  end
+  
+  def env_list()
+    @env_manager.env_list()
+  end
+  
+  def log(name_version)
+     
+    path_from = "#{$SOURCE}/tools/logs/#{name_version}/make.log"
+    path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
+    to_execute = "cp #{path_from} #{path_to}"
+    system(to_execute)
+  
+    to_execute = "cat #{path_from}"
+    system(to_execute)
+  end
+ 
+  def repo_list()
+    @git_manager.get_repo_list()
+
+  end
+
+  def build(filter = nil)
+    # Reads the User Config file
+    config = Config.new()
+    # Initialization of instances
+    git_manager = Git_Manager.new()
+    dir_manager = Directory_Manager.new()
+
+    compiler(config, git_manager, dir_manager, filter)
+  end
+
+
+  def set(str)
+    config = Config.new()
+    command = str.split('=').first.downcase
+    path = str.split('=').last
+
+    if command =~ /[\@]/
+      puts 'ERROR: not a editable variable'
+      exit
+    end
+
+    if ! @env_manager.verify_if_env_exists(config.get(:builder), command)
+      puts "ERROR: #{command.upcase} not a ENV variable"
+      exit
+    end
+
+    params = config.get(:params)
+    params.store(command.to_sym, "#{path}")
+    config.set(:params, params)
+
+    config.set_json()
+
+   # File.open('.config.json', 'w') do |f|
+   #   f.write JSON.pretty_generate(config.get_config())
+   # end
+  end
+
+  def help()
+    puts <<-EOF
+    EOF
+
+  end
+
+
+  def get_data()
+    return JSON.parse(File.read("#{Dir.getwd}/workload/config.json"), symbolize_names: true)
+  end
+
+  def to_filter(data, filter)
+    if !filter.nil?
+      if data.include?(filter.to_sym)
+        data << data.select! { |k, v| k.eql?(filter.to_sym) }
+      else
+        return false
+      end
+    end
+  end
+
+  def filter_tool(data, to_filter)
+    
+    return data if to_filter.nil?
+    
+    to_filter = to_filter.to_sym 
+    if !data.include? to_filter
+      puts "ERROR: Option Invalid!"
+      exit 
+    end 
+    
+    return data.select! { |key| key.eql? to_filter }
+  end
+
+  def compiler(config, git_manager, dir_manager, to_filter)
+  
+    data = config.get(:builder)
+    params = config.get(:params)
+
+    data = filter_tool(data, to_filter)
+    
+
+    original_prefix = params[:prefix]
+
+    data.each do |tool, command|
+      
+      params.store(:prefix, "#{params[:prefix]}/#{tool}/#{params[:version]}") if !params[:prefix].nil?
+      git_manager.set_git(command[:git])  
+      
+
+      params.each do |param, value|
+        command.each do |com, value2|
+          next if value2.class == Hash
+          tmp = value2
+          tmp = @env_manager.process_env(tmp, "@SOURCE", "#{$SOURCE}/tools/#{git_manager.get_name()}")
+          tmp = @env_manager.process_env(tmp, param.to_s.upcase, value)
+          command.store(com, tmp)
+        end
+      end
+    exit if !@env_manager.check_if_set(command)
+    
+    execute = command[:execute]
+    
+    dir_manager.create_directories(tool, params[:version])
+
+    git_manager.get_clone() # PODE DAR EXCEPTION
+
+    dir_manager.create_module_file(params[:prefix], command[:module_template]) if command.has_key? (:module_template)
+
+    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{params[:version]}")
+    puts execute
+    
+    path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{params[:params]}/make.log"
+    system("#{execute} > #{path_make_log} ")
+
+    params.store(:prefix, original_prefix) 
+    Dir.chdir($SOURCE)
+
+    end
+  end
+end
+
+class Main
+  def initialize()
+    opts = OptionParser.new(ARGV)
+    manager = Manager.new()
+    main(opts, manager)
+  end
+
+  # Main function responsable for setting up the next events
+  def main(opts, manager)
+    case opts.get(:command)
+    when :init
+      manager.init(opts.get(:file))
+    when :build
+      manager.build(opts.get(:build))
+    when :set
+      manager.set(opts.get(:set))
+    when :env_list
+      manager.env_list()
+    when :repo_list
+      manager.repo_list()
+    when :list
+
+    when :log
+      manager.log(opts.get(:log))
+    when :help
+      manager.help()
+    else
+      puts "ERROR: Invalid Operation"
+    end
+    
+    end
+  end
+  
+  Main.new()
