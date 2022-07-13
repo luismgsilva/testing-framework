@@ -247,7 +247,8 @@ class Git_Manager
     end
 
     git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
-    isCloned = system(git)
+    puts "Cloning into '#{@path_to_clone}'..."
+    isCloned = system("#{git} > /dev/null 2>&1")
     if !isCloned
       puts <<-EOF
 \nERROR: Something went wrong.
@@ -347,13 +348,22 @@ class Manager
   end
   
   def log(name_version)
-     
-    path_from = "#{$SOURCE}/tools/.logs/#{name_version}/make.log"
-    path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
-    to_execute = "cp #{path_from} #{path_to}"
-    system(to_execute)
-
   
+    begin    
+      path_from = "#{$SOURCE}/tools/.logs/#{name_version}/make.log"
+      path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
+      to_execute = "cp #{path_from} #{path_to}"
+      
+      isInstalled = system("#{to_execute} > /dev/null 2>&1")
+      if !isInstalled
+        puts "ERROR: Tool not found"
+      end
+    rescue
+      puts <<-EOF
+ERROR: Something went wrong.
+       Hint: Try 'bla log [NAME_OF_TOOL]'
+      EOF
+    end
 #    to_execute = "cat #{path_from}"
     #system(to_execute)
   end
