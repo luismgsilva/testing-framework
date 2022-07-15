@@ -1,14 +1,15 @@
 {
 	"toolchain_linux_arc64": {
 		"git": { "repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain", "branch": "master" },
-		"execute": "$env(@SOURCE)/configure --prefix=$env(PREFIX) --target=arc64 --enable-linux ; make -j$env(NJOBS)",
-		"version":"$env(VERSION)",
-		"module_template":"$env(MODULE-PATH)/toolchain.module.erb"
+		"execute": "$var(@SOURCE)/configure --prefix=$var(PREFIX) --target=arc64 --enable-linux ; make -j$var(NJOBS)",
+		"version":"$var(VERSION)",
+		"module_file": { "prefix":"$var(MODULE_PREFIX)", "template":"$var(TEMPLATE_PATH)/toolchain.module.erb" }
+		
 	},
 	"qemu": {
 		"git": { "repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/qemu", "branch": "master" },
-		"execute": "$env(@SOURCE)/configure --prefix=$env(PREFIX) --target-list=arc-softmmu --disable-werror --enable-debug ; make -j$env(NJOBS) ; make install",
-		"version":"$env(VERSION)",
-		"module_template":"$env(MODULE-PATH)/qemu.module.erb"
+		"execute": "$var(@SOURCE)/configure --prefix=$var(PREFIX) --target-list=arc-softmmu --disable-werror --enable-debug ; make -j$var(NJOBS) ; make install",
+		"version":"$var(VERSION)",
+		"module_template":"$var(MODULE_PREFIX)/qemu.module.erb"
 	}
 }

@@ -17,32 +17,42 @@ class Directory_Manager
       system("mkdir #{path}") unless File.directory? (path)
     end
   end
+  
+  def delete_build_dir()
+    path = "#{$SOURCE}/tools/build/*"
+    system("rm -rf #{path}")
+  end
+
   # Creates all main directories
   def create_directories(name, version)
     paths = [
             #"#{$SOURCE}/modulefiles/#{name}",
-            "#{$SOURCE}/modulefiles/",
+     #       "#{$SOURCE}/modulefiles/",
             #"#{$SOURCE}/tools/build/#{name}/#{version}",
             "#{$SOURCE}/tools/build/#{name}",
             #"#{$SOURCE}/tools/.logs/#{name}/#{version}"
-            "#{$SOURCE}/tools/.logs/#{name}"]
+            "#{$SOURCE}/.bla/logs/#{name}"]
   
     paths.each { |path| create_dir(path) }
   end
  
-  def check_module_file module_template 
+  def check_module_file module_file
+    module_template = module_file[:template]
     if !File.exists? module_template
       puts "ERROR: Module template file not found: #{module_template}"
       exit
     end
   end
 
-  def create_module_file(prefix, module_template)
+  def create_module_file(prefix, module_file)
    
   #  if !File.exists? (module_template)
   #    p "Module template file not found: #{module_template}"
   #    exit
   #  end
+
+    module_prefix = module_file[:prefix]
+    module_template = module_file[:template]
 
     exprex = /\/(.+)\/(.+)\/(.+)$/
     arr = prefix.match(exprex)
@@ -50,8 +60,9 @@ class Directory_Manager
     name = $2
     version = $3
 
-    module_dir = "#{$SOURCE}/modulefiles/#{name}/"
-    Dir.mkdir(module_dir) if !File.directory? (module_dir)
+    module_dir = "#{module_prefix}/#{name}/"
+    #Dir.mkdir(module_dir) if !File.directory? (module_dir)
+    create_dir(module_dir)
 
     template = ERB.new(File.read(module_template))
     
@@ -62,7 +73,7 @@ class Directory_Manager
 end
 
 class Config
-  def initialize(file = nil, env_manager = nil)
+  def initialize(file = nil, var_manager = nil)
 
     unless file.nil?
       file = get_json(file)
@@ -77,7 +88,7 @@ class Config
       #DELETE
 
       #VERIFICAR
-      env_manager.check_env_global(config[:builder])
+      var_manager.check_var_global(config[:builder])
       
       set_json(config)
     else
@@ -85,13 +96,14 @@ class Config
     end
   end
  
-  def get_json(file = '.config.json')
+  def get_json(file = '.bla/config.json')
     return JSON.parse(File.read(file), symbolize_names: true)
   end 
 
   def set_json(config = @config)
     Dir.chdir $SOURCE
-    File.open('.config.json', 'w') do |f|
+    Dir.mkdir ".bla" if !File.directory? ".bla"
+    File.open('.bla/config.json', 'w') do |f|
       f.write JSON.pretty_generate(config)
     end
   end
@@ -125,7 +137,7 @@ class OptionParser
     @opts.store(:command, :build) && @opts.store(:build, argv.shift) if (tmp =~ /build/)
     @opts.store(:command, :log) && @opts.store(:log, argv.shift) if (tmp =~ /log/)
     @opts.store(:command, :help) if (tmp =~ /help/) or (tmp =~ /h/)
-    @opts.store(:command, :env_list) if (tmp =~ /env_list/)
+    @opts.store(:command, :var_list) if (tmp =~ /var_list/)
     @opts.store(:command, :set) && @opts.store(:set, argv.shift) if (tmp =~ /set/)
     @opts.store(:command, :repo_list) if tmp =~ /repo_list/
     @opts.store(:command, :status) && @opts.store(:status, argv.shift) if tmp =~ /status/
@@ -139,20 +151,20 @@ end
 
 class Env_Manager
 
-    def verify_if_env_exists(builder, command)
-        arr = get_env_from_json(builder)
+    def verify_if_var_exists(builder, command)
+        arr = get_var_from_json(builder)
         return arr.include? command.upcase
     end
 
-    def env_list()
+    def var_list()
         config = Config.new()
-        env_list = get_env_from_json(config.get(:builder))
+        var_list = get_var_from_json(config.get(:builder))
         params = config.get(:params).keys
         
         params.map! { |p| p.to_s.upcase }            
-        env_list.select! { |p| p !~ /\@/ }
+        var_list.select! { |p| p !~ /\@/ }
 
-        env_list.each do |e|
+        var_list.each do |e|
           if ! params.include? (e)
             puts "Environment Variable #{e} not defined"
           else
@@ -163,56 +175,58 @@ class Env_Manager
         end
     end
 
-    def check_env_global(builder)
-        envs = get_env_from_json(builder)
+    def check_var_global(builder)
+        vars = get_var_from_json(builder)
         
-        envs.select! { |a| a =~ /\@/ }
-        envs = get_global_env_matching(envs)
+        vars.select! { |a| a =~ /\@/ }
+        vars = get_global_var_matching(vars)
         
-        if ! envs.empty?
+        if !vars.empty?
             puts <<-EOF
-            ERROR: Intern variable/s #{envs} not defined.
+            ERROR: Intern variable/s #{vars} not defined.
             You may try: #{global_variables[0..3]}
             EOF
             exit
         end
     end
 
-    def get_global_env_matching(env)
+    def get_global_var_matching(vars)
         arr = []
-        env.each do |e|
-            tmp = e.gsub("@", "$").to_sym
-            arr.append(e) if !global_variables.include? (tmp)
+        vars.each do |var|
+            tmp = var.gsub("@", "$").to_sym
+            arr.append(var) if !global_variables.include? (tmp)
         end
         return arr
     end
 
-    def get_env_variables(str)
-        exprex = /\$env\(([^)]+)\)/
+    def get_var_variables(str)
+        exprex = /\$var\(([^)]+)\)/
         if str =~ exprex
           return str.scan(exprex).flatten
         end
     end
 
-    def get_env_from_json(builder)
-        arr = []
-        builder.each do |key, value|
-          value.each do |key2, value2|
-            env_variables = get_env_variables(value2)
-            arr.append(env_variables) if env_variables != nil
-          end
-        end
+    def get_var_from_json_recursive(to_each, arr)
+      to_each.each do |key, value|
+        var_variables = (value.class == Hash) ? get_var_from_json_recursive(value, arr) : get_var_variables(value)
+        arr.append(var_variables) if var_variables != nil
+      end
+      return arr.flatten.uniq
+    end
+
+    def get_var_from_json(builder)
+        arr = get_var_from_json_recursive(builder, [])
         return arr.flatten.uniq
     end
     
     def check_if_set(command)
       is_set = true
       command.each do |key, value|  
-        envs = get_env_variables(value)
-        if !envs.nil?
-          envs.select! { |env| env !~ /\@/ }
-          envs.each do |a|
-            puts "ERROR: variable/s #{a} not set"
+        vars = get_var_variables(value)
+        if !vars.nil?
+          vars.select! { |var| var !~ /\@/ }
+          vars.each do |var|
+            puts "ERROR: variable #{var} not set"
           end
           is_set = false
         end
@@ -221,8 +235,8 @@ class Env_Manager
       return is_set
     end
 
-    def process_env(str, name, subs)
-      return str.gsub(/\$env\((#{name})\)/) do |m|
+    def process_var(str, name, subs)
+      return str.gsub(/\$var\((#{name})\)/) do |m|
         subs
       end
     end   
@@ -289,8 +303,10 @@ class Git_Manager
     repos = Dir.glob("#{$SOURCE}/tools/*/.git")
     repos.map! { |repo| repo.split('/')[-2] }
     repos.each do |repo|
-      puts "\n\n" + repo + ":"
-      check_up_to_date(repo)
+      puts repo + ":"
+      #check_up_to_date(repo)
+      Dir.chdir "#{$SOURCE}/tools/#{repo}"
+      puts `git status -uno`.split('.')[0]
     end
 
   end
@@ -307,13 +323,18 @@ class Status_Manager
 
  attr_reader :status
  def initialize
-    @path_to_status = "#{$SOURCE}/tools/.logs/.status.json"
+   @path_to_status = "#{$SOURCE}/.bla/logs/status.json"
     @status = (!File.file? @path_to_status) ?
       {} : JSON.parse(File.read(@path_to_status), symbolize_names: true)
   end
   
-  def set_status tool, status_msg
-    @status.store(tool, status_msg)
+  def set_status(status, tool)
+    
+    Dir.chdir($SOURCE)
+    status_msg = status ? "Passed" : "Failed. check logs: ./bla log #{tool}"
+    puts status_msg
+  
+    @status.store(status_msg, tool)
     File.open(@path_to_status, 'w') do |f|
       f.write JSON.pretty_generate(@status)
     end
@@ -323,13 +344,13 @@ end
 
 class Manager
   def initialize
-    @env_manager = Env_Manager.new()
+    @var_manager = Env_Manager.new()
     @git_manager = Git_Manager.new()
     @status_manager = Status_Manager.new()
   end
 
   def init(file)
-    Config.new(file, @env_manager)
+    Config.new(file, @var_manager)
   end
   
   def status(tool)
@@ -343,18 +364,17 @@ class Manager
   end
 
 
-  def env_list()
-    @env_manager.env_list()
+  def var_list()
+    @var_manager.var_list()
   end
   
   def log(name_version)
   
     begin    
-      path_from = "#{$SOURCE}/tools/.logs/#{name_version}/make.log"
-      path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
-      to_execute = "cp #{path_from} #{path_to}"
-      
-      isInstalled = system("#{to_execute} > /dev/null 2>&1")
+      path_from = "#{$SOURCE}/.bla/logs/#{name_version}/make.log"
+     # path_to = "#{$SOURCE}/#{name_version.sub('/','.')}.make.log"
+    #  to_execute = "cp #{path_from} #{path_to}"
+      isInstalled = system("cat #{path_from}")
       if !isInstalled
         puts "ERROR: Tool not found"
       end
@@ -364,8 +384,6 @@ ERROR: Something went wrong.
        Hint: Try 'bla log [NAME_OF_TOOL]'
       EOF
     end
-#    to_execute = "cat #{path_from}"
-    #system(to_execute)
   end
  
   def repo_list()
@@ -394,8 +412,8 @@ ERROR: Something went wrong.
       exit
     end
 
-    if ! @env_manager.verify_if_env_exists(config.get(:builder), command)
-      puts "ERROR: #{command.upcase} not a ENV variable"
+    if ! @var_manager.verify_if_var_exists(config.get(:builder), command)
+      puts "ERROR: #{command.upcase} not a variable"
       exit
     end
 
@@ -440,78 +458,72 @@ ERROR: Something went wrong.
     
     return data.select! { |key| key.eql? to_filter }
   end
+  
+  def to_process(value, key_param, value_param)
+    processed_var = @var_manager.process_var(value, key_param.to_s.upcase, value_param)
+    return processed_var
+  end
+
+  def to_each(to_each_var, key_param, value_param)
+    tmp = to_each_var
+    tmp.each do |key, value|
+      to_store_value = (value.class == Hash) ? to_each(value, key_param, value_param) : processed_var = to_process(value, key_param, value_param)
+
+      to_each_var.store(key, to_store_value)
+    end
+
+    to_each_var = tmp
+    return to_each_var
+  end
 
   def compiler(config, git_manager, dir_manager, to_filter)
   
     data = config.get(:builder)
     params = config.get(:params)
-
-    data = filter_tool(data, to_filter)
-    
     
     internal_params = params
-   
     prefix  = internal_params[:prefix]
     version = internal_params[:version]
 
+    data = filter_tool(data, to_filter)
     data.each do |tool, command|
       
       prefix_path_to_store = "#{prefix}/#{tool}/#{version}" 
       internal_params.store(:prefix, prefix_path_to_store) if !prefix.nil?
       prefix = internal_params[:prefix]
 
-      git_manager.set_git(command[:git])  
-      internal_params.store(:@SOURCE, "#{$SOURCE}/tools/#{git_manager.name}")
+      git_manager.set_git(command[:git]) 
+      internal_params.store(:@SOURCE, "#{$SOURCE}/tools/#{git_manager.name}") 
 
-      internal_params.each do |param, value|
-        command.each do |com, value2|
-          next if value2.class == Hash
-          processed_env = @env_manager.process_env(value2, param.to_s.upcase, value)
-          command.store(com, processed_env)
-        end
+      internal_params.each do |key_param, value_param|
+        to_each(command, key_param, value_param)
       end
-
-    exit if !@env_manager.check_if_set(command)
     
-    execute = command[:execute]
+      exit if !@var_manager.check_if_set(command)
     
-    dir_manager.create_directories(tool, version) # params[:version])
+      dir_manager.create_directories(tool, version)
+      git_manager.get_clone()
+      dir_manager.check_module_file(command[:module_file]) if command.has_key? :module_file
 
-    git_manager.get_clone() 
 
-    #dir_manager.create_module_file(prefix, command[:module_template]) if command.has_key? (:module_template)
-    dir_manager.check_module_file(command[:module_template]) if command.has_key? :module_template
-
-   # Dir.chdir ("#{$SOURCE}/tools/build/#{tool}/#{version}")
-    Dir.chdir ("#{$SOURCE}/tools/build/#{tool}") 
-
-    #path_make_log = "#{$SOURCE}/tools/logs/#{tool}/#{version}/make.log"
-    path_make_log = "#{$SOURCE}/tools/.logs/#{tool}/make.log"
-    out = File.open(path_make_log, 'w')
-    puts "Installing #{tool}.."
-    status = system(execute, out: out, err: out)
-    out.close()
+      Dir.chdir ("#{$SOURCE}/tools/build/#{tool}") 
+      path_make_log = "#{$SOURCE}/.bla/logs/#{tool}/make.log"
+      out = File.open(path_make_log, 'w')
+      puts "Installing #{tool}.."
+      status = system(command[:execute], out: out, err: out)
+      out.close()
     
-    Dir.chdir($SOURCE)
-    status_msg = status ? "Installation Successful" : "Error Occorred. Check logs"
-    puts status_msg 
-    dir_manager.create_module_file(prefix, command[:module_template]) if status and command.has_key? :module_template
-    define_status(tool, status_msg)
-
-   # Dir.chdir($SOURCE)
+  
+      if status and command.has_key? :module_file
+        dir_manager.create_module_file(prefix, command[:module_file])
+      end
+      @status_manager.set_status(status, tool)
+      
+      dir_manager.delete_build_dir()
     end
   end
-
-  def define_status(tool, status_msg)
-    path_to_status = "#{$SOURCE}/tools/.logs/.status.json"
-    logs = (!File.file? path_to_status) ?
-      {} : JSON.parse(File.read(path_to_status), symbolize_names: true)
-    logs.store(tool, status_msg)
-    File.open(path_to_status, 'w') do |f|
-      f.write JSON.pretty_generate(logs)
-    end
-  end 
 end
+
 
 class Main
   def initialize()
@@ -520,7 +532,6 @@ class Main
     main(opts, manager)
   end
 
-  # Main function responsable for setting up the next events
   def main(opts, manager)
     case opts.get(:command)
     when :init
@@ -529,11 +540,10 @@ class Main
       manager.build(opts.get(:build))
     when :set
       manager.set(opts.get(:set))
-    when :env_list
-      manager.env_list()
+    when :var_list
+      manager.var_list()
     when :repo_list
       manager.repo_list()
-    when :list
     when :status
       manager.status(opts.get(:status))
     when :log
