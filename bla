@@ -6,8 +6,45 @@ require 'git'
 
 $SOURCE = "#{Dir.getwd}"
 
+=begin
+class User_Interface
+  def self.template_error(module_template)
+    puts "ERROR: Module template file not found: #{module_template}"
+  end
+
+  def self.variable_error(var, value = nil)
+    if value == nil
+      puts "Variable #{var} not defined."
+    else
+      puts "Variable #{var} defined: #{value}"
+    end
+  end
+  
+  def self.internal_variable_error(vars)
+    puts <<-EOF
+    ERROR: Internal Variable/s #{vars} not defined.
+    You may try: #{global_variables[0]}
+    EOF
+  end
+  
+  def self.variable_not_set_error(var)
+    puts "ERROR: Variable #{var} not set."
+  end
+
+  def self.git_something_went_wrong_error()
+    puts <<-EOF
+    \nERROR: Something went wrong.
+             Hint: Verify Git Repository URL.
+    EOF
+  end
+
+  def self.clonning_warning(path_to_clone)
+    puts "Cloning into '#{path_to_clone}'..."
+  end
+
+end
+=end
 class Directory_Manager
-  # Gets Current date to define as version
 
   def create_dir(path)
     recursive = path.split('/')
@@ -23,16 +60,9 @@ class Directory_Manager
     system("rm -rf #{path}")
   end
 
-  # Creates all main directories
   def create_directories(name, version)
-    paths = [
-            #"#{$SOURCE}/modulefiles/#{name}",
-     #       "#{$SOURCE}/modulefiles/",
-            #"#{$SOURCE}/tools/build/#{name}/#{version}",
-            "#{$SOURCE}/tools/build/#{name}",
-            #"#{$SOURCE}/tools/.logs/#{name}/#{version}"
-            "#{$SOURCE}/.bla/logs/#{name}"]
-  
+    paths = ["#{$SOURCE}/tools/build/#{name}",
+             "#{$SOURCE}/.bla/logs/#{name}"]
     paths.each { |path| create_dir(path) }
   end
  
@@ -46,11 +76,6 @@ class Directory_Manager
 
   def create_module_file(prefix, module_file)
    
-  #  if !File.exists? (module_template)
-  #    p "Module template file not found: #{module_template}"
-  #    exit
-  #  end
-
     module_prefix = module_file[:prefix]
     module_template = module_file[:template]
 
@@ -61,7 +86,6 @@ class Directory_Manager
     version = $3
 
     module_dir = "#{module_prefix}/#{name}/"
-    #Dir.mkdir(module_dir) if !File.directory? (module_dir)
     create_dir(module_dir)
 
     template = ERB.new(File.read(module_template))
@@ -79,15 +103,9 @@ class Config
       file = get_json(file)
       
       config = {}
-      config.store(:params, "")
+      config.store(:params, {})
       config.store(:builder, file)
 
-      #DELETE
-      tmp = {}
-      config.store(:params, tmp)
-      #DELETE
-
-      #VERIFICAR
       var_manager.check_var_global(config[:builder])
       
       set_json(config)
@@ -130,7 +148,6 @@ class OptionParser
     @opts = {}
     set(argv)
   end
-  # Responsable for User input
   def set(argv)
     tmp = argv.shift
     @opts.store(:command, :init) && @opts.store(:file, argv.shift)  if (tmp =~ /init/)
@@ -141,6 +158,8 @@ class OptionParser
     @opts.store(:command, :set) && @opts.store(:set, argv.shift) if (tmp =~ /set/)
     @opts.store(:command, :repo_list) if tmp =~ /repo_list/
     @opts.store(:command, :status) && @opts.store(:status, argv.shift) if tmp =~ /status/
+    @opts.store(:command, :commit) if tmp =~ /commit/
+    @opts.store(:command, :clone) if tmp =~ /clone/
   end
  
   def get(key)
@@ -166,11 +185,11 @@ class Env_Manager
 
         var_list.each do |e|
           if ! params.include? (e)
-            puts "Environment Variable #{e} not defined"
+            puts "Internal Variable #{e} not defined"
           else
             value = e.downcase.to_sym
             hash = config.get(:params)
-            puts "Environment Variable #{e} defined: #{hash[value]}"
+            puts "Internal Variable #{e} defined: #{hash[value]}"
           end
         end
     end
@@ -182,7 +201,7 @@ class Env_Manager
         vars = get_global_var_matching(vars)
         
         if !vars.empty?
-            puts <<-EOF
+           puts <<-EOF
             ERROR: Intern variable/s #{vars} not defined.
             You may try: #{global_variables[0..3]}
             EOF
@@ -243,15 +262,78 @@ class Env_Manager
 end
 
 class Git_Manager
-  # Clones selected repo from GitHub
   
   attr_reader :name
+  def initialize
+    @internal_repo = 'https://github.com/luiss-synopsys/test.git'
+  end
 
   def set_git(git_info)
     @repo = git_info[:repo]
     @branch = git_info[:branch]
     @name = get_repo_name(@repo)
     @path_to_clone = "#{$SOURCE}/tools/#{@name}"
+  end
+    
+  def commit()
+    #testing
+    env_dir = "#{$SOURCE}/.bla"
+    Dir.chdir(env_dir)
+    
+    create_env() if !File.directory? '.git'
+    
+    system 'git add .'
+    commit_msg = get_commit_msg("#{$SOURCE}/tools")
+    Dir.chdir(env_dir)
+    system "git commit -m '#{commit_msg}'"
+    system 'git push origin main --force' 
+  end
+
+  def create_env()
+    Dir.chdir "#{$SOURCE}/.bla"
+    system 'git init'
+    system "git remote add origin #{@internal_repo}"
+    system 'git branch -M main'
+  end
+
+  def get_commit_msg(prefix)
+    
+    Dir.chdir(prefix)
+    
+    main_hash = `git log -1 --format=format:"%H"`
+    config = {}
+    
+    folders = Dir.glob('*').select { |f| File.directory? f }
+    folders.each do |folder|
+      Dir.chdir(folder)
+      hash = `git log -1 --format=format:"%H"`
+     
+      if hash == main_hash
+        Dir.chdir('./..')
+        next
+      end
+
+      if File.file? ("versions.json")
+        file = JSON.parse(File.read("versions.json"))
+        config.store(folder, file)
+      else
+        config.store(folder, hash)
+      end
+      Dir.chdir(prefix)
+    end
+    return JSON.pretty_generate(config)
+
+  end
+
+  def internal_git(command)
+    Dir.chdir "#{$SOURCE}/.bla"
+    system "git #{command}"
+  end
+
+  def get_clone_framework(branch = 'main')
+    path_to_clone = "#{$SOURCE}/.bla"
+    system("git clone --branch #{branch} #{@internal_repo} #{path_to_clone}")
+    #system "git clone --branch #{branch} https://github.com/luiss-synopsys/test.git #{path_to_clone}"
   end
 
   def get_clone()
@@ -267,7 +349,7 @@ class Git_Manager
       puts <<-EOF
 \nERROR: Something went wrong.
        Hint: Verify Git Repository URL.
-      EOF
+       EOF
       exit
     end
   end
@@ -334,7 +416,7 @@ class Status_Manager
     status_msg = status ? "Passed" : "Failed. check logs: ./bla log #{tool}"
     puts status_msg
   
-    @status.store(status_msg, tool)
+    @status.store(status_msg.to_sym, tool)
     File.open(@path_to_status, 'w') do |f|
       f.write JSON.pretty_generate(@status)
     end
@@ -353,6 +435,13 @@ class Manager
     Config.new(file, @var_manager)
   end
   
+  def clone()
+    @git_manager.get_clone_framework()
+  end
+  def commit()
+    @git_manager.commit()
+  end
+
   def status(tool)
     if tool.nil?
       status = @status_manager.status
@@ -521,8 +610,11 @@ ERROR: Something went wrong.
       
       dir_manager.delete_build_dir()
     end
+
+    #git_manager.get_commit_msg('/scratch/luiss/project/framework/tes/tools')
   end
 end
+
 
 
 class Main
@@ -530,6 +622,10 @@ class Main
     opts = OptionParser.new(ARGV)
     manager = Manager.new()
     main(opts, manager)
+
+    #
+    #Git_Manager.new().get_commit_msg("/scratch/luiss/project/framework/tes/tools")
+    exit
   end
 
   def main(opts, manager)
@@ -550,11 +646,15 @@ class Main
       manager.log(opts.get(:log))
     when :help
       manager.help()
+    when :commit
+      manager.commit()
+    when :clone
+      manager.clone()
     else
       puts "ERROR: Invalid Operation"
     end
     
-    end
   end
+end
   
-  Main.new()
+Main.new()
