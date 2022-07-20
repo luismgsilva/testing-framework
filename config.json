@@ -2,15 +2,13 @@
 	"toolchain_linux_arc64": {
 		"git": { "repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain", "branch": "master" },
 		"execute": "$var(@SOURCE)/configure --prefix=$var(PREFIX) --target=arc64 --enable-linux ; make -j$var(NJOBS)",
-		"module_version":"$var(VERSION)",
-		"module_file": { "prefix":"$var(MODULE_PREFIX)", "template":"$var(TEMPLATE_PATH)/toolchain.module.erb" },
-		"version_check":"cat $var(PREFIX)cat $var(PREFIX)//"
+		"module_file": { "prefix":"$var(MOD_PREFIX)", "template":"$var(MOD_TEMPLATE_PATH)/toolchain.module.erb", "version":"$var(MOD_VERSION)" },
+		"version_check":"cat $var(PREFIX)/"
 		
 	},
 	"qemu": {
 		"git": { "repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/qemu", "branch": "master" },
 		"execute": "$var(@SOURCE)/configure --prefix=$var(PREFIX) --target-list=arc-softmmu --disable-werror --enable-debug ; make -j$var(NJOBS) ; make install",
-		"version":"$var(VERSION)",
-		"module_template":"$var(MODULE_PREFIX)/qemu.module.erb"
+		"module_file": { "prefix":"$var(MOD_PREFIX)", "template":"$var(MOD_TEMPLATE_PATH)/qemu.module.erb", "version":"$var(MOD_VERSION)" }
 	}
 }
