@@ -4,7 +4,7 @@ module Git_Manager
 
     attr_reader :name
     def initialize
-      @internal_repo = 'https://github.com/luiss-synopsys/test.git'
+      #@internal_repo = 'https://github.com/luiss-synopsys/test.git'
     end
 
     def set_git(git_info)
@@ -14,19 +14,24 @@ module Git_Manager
       @path_to_clone = "#{$SOURCE}/tools/#{@name}"
     end
 
-    def commit()
+    def publish()
       env_dir = "#{$SOURCE}/#{$FRAMEWORK}"
       create_env() if !File.directory? "#{env_dir}/.git"
       commit_msg = get_commit_msg("#{$SOURCE}/tools")
 
       system "cd #{env_dir} ; 
+              git add . ;
               git commit -am \"#{commit_msg}\" ;
               git push origin main --force"
     end
 
     def create_env()
-      system "cd #{$SOURCE}/#{$NAME} ; 
+      system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
               git init"
+      puts "Must set up Git Repo: ./bla git remote add origin [REPOSITORY]"
+      puts "Must set up Branch: .bla git branch -M main"
+      exit
+
     end
 
     def get_commit_msg(prefix)
@@ -59,13 +64,13 @@ module Git_Manager
     end
 
     def internal_git(command)
-      system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
-              git #{command}"
+      result = system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
+                       git #{command}"
     end
 
     def get_clone_framework(repo, branch = 'main')
       path_to_clone = "#{$SOURCE}/.bla"
-      system "git clone --branch #{branch} #{@internal_repo} #{path_to_clone}"
+      system "git clone --branch #{branch} #{repo} #{path_to_clone}"
     end
 
     def get_clone()

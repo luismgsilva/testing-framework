@@ -35,6 +35,10 @@ module OptionParser
         @opts.store(:command, :publish)
       when /clone/
         @opts.store(:command, :clone)
+        @opts.store(:clone, argv.shift)
+      when /git/
+        @opts.store(:command, :git)
+        @opts.store(:git, argv.join(" "))
       end
     
     end

@@ -1,5 +1,4 @@
-#!/usr/bin/env ruby
-
+#!/home/luiss/.rvm/wrappers/ruby-2.7.2@project/ruby
 require_relative './Workload/OptionParser.rb'
 require_relative './Workload/Manager.rb'
 
@@ -31,7 +30,9 @@ class Main
     when :publish
       manager.publish()
     when :clone
-      manager.clone()
+      manager.clone(option_parser.opts[:clone])
+    when :git
+      manager.internal_git(option_parser.opts[:git])
     else 
       puts "ERROR: Invalid Operation"
     end

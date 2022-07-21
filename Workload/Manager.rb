@@ -20,13 +20,15 @@ module Manager
     def init(file)
       Config::Config.new(file, @var_manager)
     end
-    def clone()
-      @git_manager.get_clone_framework()
+    def clone(repo)
+      @git_manager.get_clone_framework(repo)
     end
     def publish()
       @git_manager.publish()
     end
-  
+    def internal_git(command)
+      @git_manager.internal_git(command)
+    end 
     def status(tool)
       if tool.nil?
         status = @status_manager.status
