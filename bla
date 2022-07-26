@@ -1,6 +1,6 @@
 #!/home/luiss/.rvm/wrappers/ruby-2.7.2@project/ruby
-require_relative './Workload/OptionParser.rb'
-require_relative './Workload/Manager.rb'
+require_relative './lib/option_parser.rb'
+require_relative './lib/manager.rb'
 
 class Main
   def initialize
@@ -22,7 +22,7 @@ class Main
     when :repo_list
       manager.repo_list()
     when :status
-      manager.status(option_parser.opts[:status])
+      manager.status()
     when :log 
       manager.log(option_parser.opts[:log])
     when :help

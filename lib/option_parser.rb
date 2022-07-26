@@ -30,7 +30,6 @@ module OptionParser
         @opts.store(:command, :repo_list) 
       when /status/
         @opts.store(:command, :status) 
-        @opts.store(:status, argv.shift)
       when /publish/
         @opts.store(:command, :publish)
       when /clone/

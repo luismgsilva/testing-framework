@@ -3,7 +3,7 @@ module Var_Manager
   class Var_Manager
       def verify_if_var_exists(builder, command)
           arr = get_var_from_json(builder)
-          return arr.include? command.upcase
+          return arr.include? command
       end
 
       def var_list(cfg)
@@ -15,11 +15,11 @@ module Var_Manager
 
           var_list.each do |e|
             if ! params.include? (e)
-              puts "Internal Variable #{e} not defined"
+              puts "Input Variable #{e} not defined"
             else
-              value = e.downcase.to_sym
+              value = e.to_sym
               hash = cfg.config[:params]
-              puts "Internal Variable #{e} defined: #{hash[value]}"
+              puts "Input Variable #{e} defined: #{hash[value]}"
             end
           end
       end
@@ -30,9 +30,7 @@ module Var_Manager
           vars.select! { |a| a =~ /\@/ }
           vars = get_global_var_matching(vars)
 
-          if !vars.empty?
-            puts "ERROR: Intern Variable/S #{vars} not defined." ; exit
-          end
+          abort("ERROR: Input Variable/s #{vars} not defined.") if !vars.empty?
         end
 
       def get_global_var_matching(vars)
@@ -67,6 +65,10 @@ module Var_Manager
       def check_if_set(command)
         is_set = true
         command.each do |key, value|  
+          if value.class == Hash
+            is_set = check_if_set(value)
+            next
+          end
           vars = get_var_variables(value)
           if !vars.nil?
             vars.select! { |var| var !~ /\@/ }

@@ -15,7 +15,7 @@ module Directory_Manager
       system "rm -rf #{path}" if File.directory? path
     end
   
-    def create_directories(name, version)
+    def create_directories(name)
       paths = ["#{$SOURCE}/tools/build/#{name}",
                "#{$SOURCE}/.bla/logs/#{name}"]
       paths.each { |path| create_dir(path) }
@@ -23,29 +23,20 @@ module Directory_Manager
   
     def check_module_file module_file
       module_template = module_file[:template]
-      if !File.exists? module_template
-        puts "ERROR: Module template file not found: #{module_template}" ; exit
-      end
+      abort("ERROR: Module template file not found: #{module_template}") if !File.exists? module_template
     end
   
-    def create_module_file(prefix, module_file)
-    
+    def create_module_file(prefix, tool, module_file)
+      
       module_prefix = module_file[:prefix]
       module_template = module_file[:template]
-    
-      exprex = /\/(.+)\/(.+)\/(.+)$/
-      arr = prefix.match(exprex)
-      prefix = $1
-      name = $2
-      version = $3
-    
-      module_dir = "#{module_prefix}/#{name}/"
+      version = module_file[:version]
+      
+      module_dir = "#{module_prefix}/#{tool}/"
       create_dir(module_dir)
-    
+       
       template = ERB.new(File.read(module_template))
-      File.open("#{module_dir}/#{version}.lua", 'w') do |f|
-        f.write template.result(binding)
-      end
+      File.write("#{module_dir}/#{version}.lua", template.result(binding))
     end
   end
 end

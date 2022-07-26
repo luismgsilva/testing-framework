@@ -14,22 +14,31 @@ module Git_Manager
       @path_to_clone = "#{$SOURCE}/tools/#{@name}"
     end
 
+    def executing(to_execute)
+      puts "Executing: #{to_execute}"
+    end
+
     def publish()
       env_dir = "#{$SOURCE}/#{$FRAMEWORK}"
       create_env() if !File.directory? "#{env_dir}/.git"
       commit_msg = get_commit_msg("#{$SOURCE}/tools")
 
-      system "cd #{env_dir} ; 
-              git add . ;
-              git commit -am \"#{commit_msg}\" ;
-              git push origin main --force"
+      to_execute = "cd #{env_dir} ;
+                    git add . ;
+                    git commit -m \"#{commit_msg}\" ;
+                    git push origin main"
+      #system to_execute
+      
+      executing("\n#{to_execute.squeeze(" ").strip}")
+      
     end
 
     def create_env()
-      system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
-              git init"
-      puts "Must set up Git Repo: ./bla git remote add origin [REPOSITORY]"
-      puts "Must set up Branch: .bla git branch -M main"
+      puts <<-EOF
+      Must initialize Git Repo: bla git init
+      Must set up Git Repo: bla git remote add origin [REPOSITIORY]
+      Must set up Branch: bla git branch -M main
+      EOF
       exit
 
     end

@@ -25,10 +25,8 @@ module Config
   
     def set_json(config = @config)
       path = "#{$SOURCE}/#{$FRAMEWORK}"
-      system "cd #{$SOURCE} ; mkdir #{$FRAMEWORK}" if !File.directory? "#{path}"
-      File.open("#{path}/config.json", "w") do |f|
-        f.write JSON.pretty_generate(config)
-      end
+      system "mkdir #{path}" if !File.directory? "#{path}"
+      File.write("#{path}/config.json", JSON.pretty_generate(config))
     end
   end
 end
