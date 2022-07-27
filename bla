@@ -33,6 +33,8 @@ class Main
       manager.clone(option_parser.opts[:clone])
     when :git
       manager.internal_git(option_parser.opts[:git])
+    when :runtest
+      manager.runtest()
     else 
       puts "ERROR: Invalid Operation"
     end

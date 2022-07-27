@@ -5,10 +5,6 @@ module Status_Manager
     attr_reader :path_to_status
     def initialize
      @path_to_status = "#{$SOURCE}/.bla/logs/status"
-     #@status = (!File.file? @path_to_status) ? 
-     #  {} : @path_to_status)
-     # @status = (!File.file? @path_to_status) ?
-     #   {} : JSON.parse(File.read(@path_to_status), symbolize_names: true)
     end
     
 

@@ -17,57 +17,48 @@ module Build
             return data.select! { |key| key.eql? to_filter }
         end
 
-        def to_process(value, key_param, value_param)
-            @var_manager.process_var(value, key_param.to_s, value_param)
-        end
-        
-        def to_each(to_each_var, key_param, value_param)
-            tmp = to_each_var
-            tmp.each do |key, value|
-              to_store_value = (value.class == Hash) ? 
-                          to_each(value, key_param, value_param) : 
-                          to_process(value, key_param, value_param)
-            
-              to_each_var.store(key, to_store_value)
-            end
-            to_each_var = tmp
-            return to_each_var
-        end
-
         def build(to_filter)
             data = @cfg.config[:builder]
             params = @cfg.config[:params]
-            internal_params = params
-            prefix  = internal_params[:PREFIX] #
-          
+            prefix = params[:PREFIX] 
+             
             data = filter_tool(data, to_filter)
             data.each do |tool, command|
                 prefix_path_to_store = "#{prefix}/#{tool}" #
-                internal_params.store(:PREFIX, prefix_path_to_store) if !prefix.nil? #
+                params.store(:PREFIX, prefix_path_to_store) if !prefix.nil?
                 
                 @git_manager.set_git(command[:git]) 
-                internal_params.store(:@SOURCE, "#{$SOURCE}/tools/#{@git_manager.name}") 
+                params.store(:@SOURCE, "#{$SOURCE}/tools/#{@git_manager.name}")
+                params.store(:@BUILDNAME, tool.to_s)
                 @dir_manager.delete_build_dir(tool)
-
-                internal_params.each do |key_param, value_param|
-                  to_each(command, key_param, value_param)
-                end
-                exit if !@var_manager.check_if_set(command)
-            
+                 
+                command = @var_manager.prepare_data(command, params)
+                
                 @dir_manager.create_directories(tool)
                 @git_manager.get_clone()
-                @dir_manager.check_module_file(command[:module_file]) if command.has_key? :module_file
+           #     @dir_manager.check_module_file(command[:module_file]) if command.has_key? :module_file
+                
+                module_path = "#{params[:MOD_PREFIX]}/#{tool}" 
+                @dir_manager.create_dir(module_path)
                 
                 path_make_log = "#{$SOURCE}/#{$FRAMEWORK}/logs/#{tool}/make.log"
-                out = File.open(path_make_log, 'w')
+        
+                out = File.open(path_make_log, "w")
                 puts "Installing #{tool}.."
-                status = system "cd #{$SOURCE}/tools/build/#{tool} ; " + 
+                if command[:execute].class == String
+                  status = system "cd #{$SOURCE}/tools/build/#{tool} ; " + 
                                  command[:execute], out: out, err: out
-                out.close()
-                
-                if status and command.has_key? :module_file
-                  @dir_manager.create_module_file(internal_params[:PREFIX], tool, command[:module_file])
+                elsif command [:execute].class == Array
+                  command[:execute].each do |m|
+                    status = system "cd #{$SOURCE}/tools/build/#{tool} ;  
+                                    echo #{m} ;" +
+                                     m, out: out, err: out
+                  end
                 end
+                out.close()
+                #if status and command.has_key? :module_file
+                #  @dir_manager.create_module_file(internal_params[:PREFIX], tool, command[:module_file])
+                #end
                 @status_manager.set_status(status, tool)
             end
           end

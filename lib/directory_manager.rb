@@ -25,7 +25,8 @@ module Directory_Manager
       module_template = module_file[:template]
       abort("ERROR: Module template file not found: #{module_template}") if !File.exists? module_template
     end
-  
+    
+=begin 
     def create_module_file(prefix, tool, module_file)
       
       module_prefix = module_file[:prefix]
@@ -38,5 +39,6 @@ module Directory_Manager
       template = ERB.new(File.read(module_template))
       File.write("#{module_dir}/#{version}.lua", template.result(binding))
     end
+=end
   end
 end

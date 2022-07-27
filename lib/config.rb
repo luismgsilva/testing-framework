@@ -7,12 +7,16 @@ module Config
       
       unless file.nil?
         puts file
+        tmp = {}
+    
+          tmp.store(:@PATH, prepare_data(file))
         file = get_json(file)
         config = {}
-        config.store(:params, {})
+        config.store(:params, tmp)
         config.store(:builder, file)
-      
-        var_manager.check_var_global(config[:builder])
+       
+   #     var_manager.check_var_global(config[:builder])
+        
         set_json(config)
       else
         @config = get_json()
@@ -23,6 +27,14 @@ module Config
       return JSON.parse(File.read(file), symbolize_names: true)
     end 
   
+
+    def prepare_data(file)
+      file = file.split("/")
+      file.pop
+      file = file.join("/")
+      return file
+    end
+
     def set_json(config = @config)
       path = "#{$SOURCE}/#{$FRAMEWORK}"
       system "mkdir #{path}" if !File.directory? "#{path}"

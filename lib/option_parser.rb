@@ -38,6 +38,8 @@ module OptionParser
       when /git/
         @opts.store(:command, :git)
         @opts.store(:git, argv.join(" "))
+      when /runtest/
+        @opts.store(:command, :runtest)
       end
     
     end

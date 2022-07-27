@@ -4,6 +4,7 @@ require_relative './git_manager.rb'
 require_relative './status_manager.rb'
 require_relative './var_manager.rb'
 require_relative './build.rb'
+require_relative './runtest.rb'
 require 'json'
 require 'erb'
 require 'git'
@@ -59,13 +60,21 @@ module Manager
 
       Build::Build.new(cfg, git_manager, dir_manager, @var_manager, @status_manager, filter)
     end
+
+    def runtest
+      cfg = Config::Config.new
+      opts = cfg.config[:runtest]
+      params = cfg.config[:params]
+      Runtest::Runtest.new(@var_manager, opts, params) 
+    end
+
     def set(str)
       cfg = Config::Config.new()
       command = str.split('=').first
       path = str.split('=').last
     
       abort("ERROR: not a editable variable") if command =~/[\@]/
-      abort("ERROR: #{command} not a variable") if !@var_manager.verify_if_var_exists(cfg.config[:builder], command)
+      abort("ERROR: #{command} not a variable") if !@var_manager.verify_if_var_exists(cfg.config, command)
     
       params = cfg.config[:params]
       params.store(command.to_sym, "#{path}")

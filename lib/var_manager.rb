@@ -2,12 +2,12 @@ module Var_Manager
 
   class Var_Manager
       def verify_if_var_exists(builder, command)
-          arr = get_var_from_json(builder)
+          arr = get_var_variables(builder)
           return arr.include? command
       end
 
       def var_list(cfg)
-          var_list = get_var_from_json(cfg.config[:builder])
+        var_list = get_var_variables(cfg.config) 
           params = cfg.config[:params].keys
 
           params.map! { |p| p.to_s.upcase }            
@@ -25,12 +25,12 @@ module Var_Manager
       end
 
       def check_var_global(builder)
-          vars = get_var_from_json(builder)
+          vars = get_var_variables(builder)
 
           vars.select! { |a| a =~ /\@/ }
           vars = get_global_var_matching(vars)
 
-          abort("ERROR: Input Variable/s #{vars} not defined.") if !vars.empty?
+          abort("ERROR: Internal Variable/s #{vars} not defined.") if !vars.empty?
         end
 
       def get_global_var_matching(vars)
@@ -41,50 +41,25 @@ module Var_Manager
           end
           return arr
       end
-
-      def get_var_variables(str)
+      
+      def get_var_variables(hash)
+          str = JSON.pretty_generate(hash)
           exprex = /\$var\(([^)]+)\)/
-          if str =~ exprex
-            return str.scan(exprex).flatten
-          end
+          return str.scan(exprex).flatten.uniq
+      end
+      
+      def prepare_data(hash, params)
+        str = JSON.pretty_generate(hash)
+        str = process_variables(str, params)
+        return JSON.parse(str, symbolize_names: true)
       end
 
-      def get_var_from_json_recursive(to_each, arr)
-        to_each.each do |key, value|
-          var_variables = (value.class == Hash) ? get_var_from_json_recursive(value, arr) : get_var_variables(value)
-          arr.append(var_variables) if var_variables != nil
+      def process_variables(str, params)
+        return str.gsub(/\$var\(([A-Z0-9_@]+)\)/) do |m|
+          abort("Input variable not set #{$1}.") if params[$1.to_sym].nil?
+          params[$1.to_sym]
         end
-        return arr.flatten.uniq
       end
-
-      def get_var_from_json(builder)
-          arr = get_var_from_json_recursive(builder, [])
-          return arr.flatten.uniq
-      end
-
-      def check_if_set(command)
-        is_set = true
-        command.each do |key, value|  
-          if value.class == Hash
-            is_set = check_if_set(value)
-            next
-          end
-          vars = get_var_variables(value)
-          if !vars.nil?
-            vars.select! { |var| var !~ /\@/ }
-            vars.each do |var|
-              puts "ERROR: variable #{var} not set"
-            end
-            is_set = false
-          end
-        end
-        return is_set
-      end
-
-      def process_var(str, name, subs)
-        return str.gsub(/\$var\((#{name})\)/) do |m|
-          subs
-        end
-      end   
+      
   end
 end
