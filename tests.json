@@ -1,0 +1,58 @@
+{
+  "hs_baremetal_tests": {
+    "pre_condition": [
+      "which arc-elf32-gcc",
+      "which $var(QEMU_HOME)/bin/qemu-system-arc"
+    ],
+    "execute": [
+      "erb gcc_dir=$var(SOURCE_GCC_ARCV2)/gcc/ toolchain_tripplet=arc-unknown-elf32 target_alias=arc-elf32 target_list=arc-sim-qemu toolchain_dir=$var(SOURCE_ARCV2)/toolchain/  $var(@CONFIG_SOURCE_PATH)/baremetal_qemu.siteexp.erb > $var(@WORKSPACE)/site.exp",
+      "mkdir -p $var(@WORKSPACE)/tmp ; mkdir -p $var(@WORKSPACE)/dump1 ; mkdir -p $var(@WORKSPACE)/dump2",
+      "QEMU_HOME=$var(QEMU_HOME) runtest dg.exp ; echo ''",
+      "mkdir -p $var(@GIT_TESTS)/$var(@BUILDNAME) ; cp $var(@WORKSPACE)/gcc.sum $var(@WORKSPACE)/gcc.log $var(@GIT_TESTS)/$var(@BUILDNAME)"
+    ],
+    "version_check": [
+      "cat $(dirname $(which arc-elf32-gcc))/../versions.json",
+      "cat $(dirname $(which qemu-system-arc))/../versions.json"
+    ],
+    "comparator": "ruby $var(@CONFIG_SOURCE_PATH)/compare.rb $var(@BASELINE) $var(@REFERENCE) $var(@BUILDNAME)"
+  },
+  "hs_linux_user_tests": {
+    "pre_condition": [
+      "which arc-linux-gnu-gcc",
+      "which $var(QEMU_HOME)/bin/qemu-system-arc"
+    ],
+    "execute": [
+      "erb gcc_dir=$var(SOURCE_GCC_ARCV2)/gcc/ toolchain_tripplet=arc-linux-gnu target_alias=arc-linux-gnu target_list=arc-linux-qemu-user toolchain_dir=$var(SOURCE_ARCV2)/toolchain/ qemu_opts=\"-L $var(INSTALL_ARCV2_LINUX)/sysroot\"  $var(@CONFIG_SOURCE_PATH)/linux_qemu_user.siteexp.erb > $var(@WORKSPACE)/site.exp",
+      "mkdir -p $var(@WORKSPACE)/tmp ; mkdir -p $var(@WORKSPACE)/dump1 ; mkdir -p $var(@WORKSPACE)/dump2",
+      "QEMU_HOME=$var(QEMU_HOME) runtest dg.exp ; echo ''",
+      "mkdir -p $var(@GIT_TESTS)/$var(@BUILDNAME) ; cp $var(@WORKSPACE)/gcc.sum $var(@WORKSPACE)/gcc.log $var(@GIT_TESTS)/$var(@BUILDNAME)"
+    ],
+    "version_check": [
+      "cat $(dirname $(which arc-linux-gnu-gcc))/../versions.json",
+      "cat $(dirname $(which qemu-system-arc))/../versions.json"
+    ],
+    "comparator": "ruby $var(@CONFIG_SOURCE_PATH)/compare.rb $var(@BASELINE) $var(@REFERENCE) $var(@BUILDNAME)"
+  },
+  "hs_linux_tests": {
+    "pre_condition": [
+      "which arc-linux-gnu-gcc",
+      "which $var(QEMU_HOME)/bin/qemu-system-arc"
+    ],
+    "execute": [
+      "erb gcc_dir=$var(SOURCE_GCC_ARCV2)/gcc/ toolchain_tripplet=arc-linux-gnu target_alias=arc-linux-gnu target_list=arc-linux-qemu toolchain_dir=$var(SOURCE_ARCV2)/toolchain/ $var(@CONFIG_SOURCE_PATH)/linux_qemu.siteexp.erb > $var(@WORKSPACE)/site.exp",
+      "mkdir -p $var(@WORKSPACE)/tmp ; mkdir -p $var(@WORKSPACE)/dump1 ; mkdir -p $var(@WORKSPACE)/dump2",
+      "QEMU_HOME=$var(QEMU_HOME) ARC_MULTILIB_OPTIONS='cpu=archs' TARGET_TELNET_PORT=$var(PORT_PREFIX)6 TARGET_FTP_PORT=$var(PORT_PREFIX)5 runtest dg.exp"
+    ]
+  },
+  "arc64_baremetal_tests": {
+    "pre_condition": [
+      "which arc64-elf-gcc",
+      "which $var(QEMU_HOME)/bin/qemu-system-arc"
+    ],
+    "execute": [
+      "erb gcc_dir=$var(SOURCE_GCC_ARCV3)/gcc toolchain_tripplet=arc64-unknown-elf target_alias=arc64-elf target_list=arc-sim-qemu toolchain_dir=$var(SOURCE_ARCV3)/arc-gnu-toolchain/ $var(@CONFIG_SOURCE_PATH)/baremetal_qemu.siteexp.erb > $var(@WORKSPACE)site.exp",
+      "mkdir -p $var(@WORKSPACE)/tmp ; mkdir -p $var(@WORKSPACE)/dump1 ; mkdir -p $var(@WORKSPACE)/dump2",
+      "QEMU_HOME=$var(QEMU_HOME) runtest dg.exp"
+    ]
+  }
+}

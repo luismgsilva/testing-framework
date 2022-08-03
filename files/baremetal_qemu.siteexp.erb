@@ -1,0 +1,19 @@
+set tmpdir "./tmp"
+set srcdir "<%=gcc_dir %>/gcc/testsuite"
+set target_triplet <%=toolchain_tripplet %>
+set target_alias   <%=target_alias %>
+set tool gcc                                                                                                                                                                  
+set target_list    <%=target_list %>
+set CFALGS ""
+set CXXFLAGS ""
+set verbose 0
+set arc_board_dir <%=toolchain_dir %>
+if ![info exists boards_dir] {
+lappend boards_dir "$arc_board_dir/dejagnu"
+lappend boards_dir "$arc_board_dir/dejagnu/baseboards"
+} else {
+set boards_dir "$arc_board_dir/dejagnu”
+lappend boards_dir "$arc_board_dir/dejagnu/baseboards”
+}
+#set TIMEOUT_FACTOR 0.1
+

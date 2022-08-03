@@ -1,3 +1,5 @@
 .token
 .tino.rb
 workload/config
+*.sw
+*.swp

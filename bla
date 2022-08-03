@@ -28,16 +28,23 @@ class Main
     when :help
       manager.help()
     when :publish
-      manager.publish()
+      manager.publish(option_parser.opts[:publish])
     when :clone
       manager.clone(option_parser.opts[:clone])
     when :git
       manager.internal_git(option_parser.opts[:git])
-    when :runtest
-      manager.runtest()
+    when :save_config
+      manager.save_config(option_parser.opts[:save_config])
+    when :versions
+      manager.versions(option_parser.opts[:versions])
+    when :search
+      manager.search_log(option_parser.opts[:search])
+    when :compare
+      manager.compare(option_parser.opts[:compare])
     else 
       puts "ERROR: Invalid Operation"
     end
+
   end
 end
 

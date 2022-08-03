@@ -59,7 +59,6 @@ module Var_Manager
           abort("Input variable not set #{$1}.") if params[$1.to_sym].nil?
           params[$1.to_sym]
         end
-      end
-      
+      end 
   end
 end

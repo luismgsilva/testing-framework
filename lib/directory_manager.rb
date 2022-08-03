@@ -17,7 +17,9 @@ module Directory_Manager
   
     def create_directories(name)
       paths = ["#{$SOURCE}/tools/build/#{name}",
-               "#{$SOURCE}/.bla/logs/#{name}"]
+               "#{$SOURCE}/.bla/logs/#{name}" #,
+              # "#{$SOURCE}/.bla/tests/"
+      ]
       paths.each { |path| create_dir(path) }
     end
   

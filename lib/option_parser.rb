@@ -15,7 +15,7 @@ module OptionParser
         @opts.store(:file, argv.shift)
       when /build/
         @opts.store(:command, :build) 
-        @opts.store(:build, argv.shift)
+        @opts.store(:build, argv)
       when /log/
         @opts.store(:command, :log)
         @opts.store(:log, argv.shift)
@@ -32,14 +32,28 @@ module OptionParser
         @opts.store(:command, :status) 
       when /publish/
         @opts.store(:command, :publish)
+        @opts.store(:publish, argv.shift)
       when /clone/
         @opts.store(:command, :clone)
         @opts.store(:clone, argv.shift)
       when /git/
         @opts.store(:command, :git)
         @opts.store(:git, argv.join(" "))
-      when /runtest/
-        @opts.store(:command, :runtest)
+      when /save_config/
+        @opts.store(:command, :save_config)
+        @opts.store(:save_config, argv.shift)
+      when /versions/
+        @opts.store(:command, :versions)
+        @opts.store(:versions, argv.shift)
+      when /tail/
+        @opts.store(:command, :tail)
+        @opts.store(:tail, argv.shift)
+      when /search/
+        @opts.store(:command, :search)
+        @opts.store(:search, argv)
+      when /compare/
+        @opts.store(:command, :compare)
+        @opts.store(:compare, argv)
       end
     
     end

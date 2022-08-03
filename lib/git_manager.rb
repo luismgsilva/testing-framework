@@ -18,20 +18,34 @@ module Git_Manager
       puts "Executing: #{to_execute}"
     end
 
-    def publish()
+    def publish(commit_msg)
       env_dir = "#{$SOURCE}/#{$FRAMEWORK}"
       create_env() if !File.directory? "#{env_dir}/.git"
-      commit_msg = get_commit_msg("#{$SOURCE}/tools")
+     # commit_msg = get_commit_msg("#{$SOURCE}/tools")
+     
 
       to_execute = "cd #{env_dir} ;
                     git add . ;
-                    git commit -m \"#{commit_msg}\" ;
-                    git push origin main"
-      #system to_execute
-      
+                    git commit -m '#{commit_msg}' ;
+                    git push -u origin main "
+     
       executing("\n#{to_execute.squeeze(" ").strip}")
-      
+    
+      system to_execute
     end
+  
+    #tmp
+
+    def search_log(params)
+      to_execute = "log --all " 
+      params.each do |param|
+        param = param.split("=")
+        to_execute += %{ --grep='"#{param[0]}": "#{param[1]}"'}
+      end
+      to_execute += " --all-match"
+      internal_git(to_execute)
+    end
+
 
     def create_env()
       puts <<-EOF
@@ -39,40 +53,13 @@ module Git_Manager
       Must set up Git Repo: bla git remote add origin [REPOSITIORY]
       Must set up Branch: bla git branch -M main
       EOF
-      exit
+      exit 1
 
     end
-
-    def get_commit_msg(prefix)
-      config = {}
-
-      exists = File.directory? "#{prefix}/.git"
-      to_execute = "cd #{prefix} ;
-                    git log -1 --format=format:\"%H\""
-      main_hash = !exists ? nil : `#{to_execute}`
-
-      folders = `cd #{prefix} ; ls -d */`.split "\n"
-      folders.map { |str| str.delete_suffix! "/" }
-
-      folders.each do |folder|
-        path = "#{prefix}/#{folder}"
-        next if !File.directory? "#{path}/.git" 
-
-        hash = `cd #{path} ; 
-                git log -1 --format=format:"%H"`
-
-        if File.file? ("#{path}/versions.json")
-          file = JSON.parse(File.read("#{path}/versions.json"))
-          config.store(folder, file)
-        else
-          config.store(folder, hash)
-        end
-      end
-      return JSON.pretty_generate(config)
-
-    end
-
+    
     def internal_git(command)
+      to_execute = "cd #{$SOURCE}/#{$FRAMEWORK} ; git #{command}"
+      executing(to_execute)
       result = system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
                        git #{command}"
     end
@@ -81,6 +68,28 @@ module Git_Manager
       path_to_clone = "#{$SOURCE}/.bla"
       system "git clone --branch #{branch} #{repo} #{path_to_clone}"
     end
+    
+    # DELETE THIS
+    def delete()
+      system "rm -rf #{@path_to_clone}"
+    end
+    
+    def tmp_dir(i)
+      "/scratch/luiss/tmp/#{i}"
+    end
+
+    def create_worktree(arr)
+      baseline = arr[0]
+      reference = (arr[1].nil?) ? "HEAD" : arr[1]
+
+      internal_git("worktree add #{tmp_dir(0)} #{baseline} > /dev/null 2>&1")
+      internal_git("worktree add #{tmp_dir(1)} #{reference} > /dev/null 2>&1")
+    end
+
+    def remove_worktree()
+      internal_git("worktree remove #{tmp_dir(0)}")
+      internal_git("worktree remove #{tmp_dir(1)}")
+    end
 
     def get_clone()
 
@@ -88,6 +97,11 @@ module Git_Manager
 
       git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
       puts "Cloning into '#{@path_to_clone}'..."
+      
+      system (git)
+      return
+
+
       if !system("#{git} > /dev/null 2>&1")
         puts "ERROR: Something went wrong." ; exit
       end
