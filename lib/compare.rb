@@ -15,7 +15,8 @@ module Compare
     end 
   
     def main(dir1, dir2, task, json)
-      table = create_table(dir1, dir2, task, json)
+      data = {}
+      table = create_table(dir1, dir2, data, task, json)
       puts table
       print_compare(data)
     end
@@ -51,8 +52,7 @@ module Compare
       return ret
     end
 
-    def create_table(dir1, dir2, task, json)
-      data = {}
+    def create_table(dir1, dir2,data, task, json)
       table = Terminal::Table.new do |t|
         
         header = ["", "D(PASS)", "D(FAIL)", "D(NEW)", "D(REM)",
