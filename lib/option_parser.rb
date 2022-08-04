@@ -53,6 +53,8 @@ module OptionParser
         @opts.store(:search, argv)
       when /compare/
         @opts.store(:command, :compare)
+        @opts.store(:json, false) 
+        %w[-j -json].each { |j| @opts.store(:json, true) and argv.delete(j) if argv.include? j }
         @opts.store(:compare, argv)
       end
     

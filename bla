@@ -40,7 +40,7 @@ class Main
     when :search
       manager.search_log(option_parser.opts[:search])
     when :compare
-      manager.compare(option_parser.opts[:compare])
+      manager.compare(option_parser.opts[:compare], option_parser.opts[:json])
     else 
       puts "ERROR: Invalid Operation"
     end
