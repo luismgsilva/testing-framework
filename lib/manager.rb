@@ -40,36 +40,30 @@ module Manager
       system "#{to_execute}"
     end 
 
-    # Feito à batatada. vai ser tudo alterado
-    def compare(arr)
+    def compare(arr, isJSON)
      
-      @git_manager.create_worktree(arr)
-      dir_first = "#{@git_manager.tmp_dir(0)}/tests"
-      dir_second = "#{@git_manager.tmp_dir(1)}/tests"
-      
-      folder1 = folder2 = []
-      
-      `find #{dir_first} -name "*_tests"`.split("\n").each { |s| folder1.append(s.split("/")[-1]) } 
-      `find #{dir_second} -name "*_tests"`.split("\n").each { |s| folder2.append(s.split("/")[-1]) } 
-      
-      tasks = folder1 & folder2
-
       cfg = Config::Config.new
+      compare = Compare::Compare.new
 
-#      cfg.config[:params].store(:@BASELINE, "#{@git_manager.tmp_dir(0)}/tests")
-#      cfg.config[:params].store(:@REFERENCE, "#{@git_manager.tmp_dir(1)}/tests")
-   #   compare = Compare::Compare.new
-    
-      #  compare = Compare::Compare.new
+      @git_manager.create_worktree(arr)
+      
+      dir1 = "#{@git_manager.tmp_dir(0)}/tests"
+      dir2 = "#{@git_manager.tmp_dir(1)}/tests"
+
+      tasks = (Dir.children(dir1) & Dir.children(dir2)).select { |d| d =~ /_tests/ }
+     
       tasks.each do |task|
-        cfg.config[:params].store(:@BASELINE, "#{dir_first}/#{task}")
-        cfg.config[:params].store(:@REFERENCE, "#{dir_second}/#{task}")
+        cfg.config[:params].store(:@BASELINE, "#{dir1}/#{task}")
+        cfg.config[:params].store(:@REFERENCE, "#{dir2}/#{task}")
         cfg.config[:params].store(:@BUILDNAME, task)
         to_execute = @var_manager.prepare_data("#{cfg.config[:builder][task.to_sym][:comparator]}", cfg.config[:params])       
-        p to_execute
         json = `gem install terminal-table > /dev/null 2>&1 ; #{to_execute}`
-        Compare::Compare.new(dir_first, dir_second, task, json)
-        #@compare. 
+      
+        if !isJSON
+          compare.main(dir1, dir2, task, JSON.parse(json))
+        else 
+          puts "\n #{task}: \n #{json}"
+        end
       end
       @git_manager.remove_worktree()    
     end
