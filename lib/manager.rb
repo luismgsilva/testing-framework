@@ -4,6 +4,7 @@ require_relative './git_manager.rb'
 require_relative './status_manager.rb'
 require_relative './var_manager.rb'
 require_relative './build.rb'
+require_relative './compare.rb'
 require 'json'
 require 'erb'
 require 'git'
@@ -51,19 +52,24 @@ module Manager
       `find #{dir_first} -name "*_tests"`.split("\n").each { |s| folder1.append(s.split("/")[-1]) } 
       `find #{dir_second} -name "*_tests"`.split("\n").each { |s| folder2.append(s.split("/")[-1]) } 
       
-      tools = folder1 & folder2
+      tasks = folder1 & folder2
 
       cfg = Config::Config.new
 
-      cfg.config[:params].store(:@BASELINE, "#{@git_manager.tmp_dir(0)}/tests")
-      cfg.config[:params].store(:@REFERENCE, "#{@git_manager.tmp_dir(1)}/tests")
-
-      tools.each do |tool|
-
-        cfg.config[:params].store(:@BUILDNAME, tool)
-        to_execute = @var_manager.prepare_data("#{cfg.config[:builder][tool.to_sym][:comparator]}", cfg.config[:params])       
-        system "gem install terminal-table ; " + to_execute
-      
+#      cfg.config[:params].store(:@BASELINE, "#{@git_manager.tmp_dir(0)}/tests")
+#      cfg.config[:params].store(:@REFERENCE, "#{@git_manager.tmp_dir(1)}/tests")
+   #   compare = Compare::Compare.new
+    
+      #  compare = Compare::Compare.new
+      tasks.each do |task|
+        cfg.config[:params].store(:@BASELINE, "#{dir_first}/#{task}")
+        cfg.config[:params].store(:@REFERENCE, "#{dir_second}/#{task}")
+        cfg.config[:params].store(:@BUILDNAME, task)
+        to_execute = @var_manager.prepare_data("#{cfg.config[:builder][task.to_sym][:comparator]}", cfg.config[:params])       
+        p to_execute
+        json = `gem install terminal-table > /dev/null 2>&1 ; #{to_execute}`
+        Compare::Compare.new(dir_first, dir_second, task, json)
+        #@compare. 
       end
       @git_manager.remove_worktree()    
     end
