@@ -14,15 +14,16 @@ module Build
             return data if to_filter.empty?
             
             to_filter.map! { |x| x.to_sym } 
-        
             to_filter.each { |filter| abort ("ERROR: Option Invalid #{filter}") if !data.include? filter }
-            
+            data = data.delete_if { |d| !to_filter.include? d }
+=begin
             tmp = {}
             to_filter.each do |filter|
               tmp.store(filter, data[filter])
               #data.select! { |key| key.eql? filter }
             end
             return tmp
+=end      
         end
 
         def pre_conditions_exec(reqs, tool)
@@ -31,18 +32,18 @@ module Build
           # temporario
           path_test_log = "#{$SOURCE}/#{$FRAMEWORK}/logs/#{tool}.log"
           out = File.open(path_test_log, "w")
-          if reqs.class == String
-            status = system "echo Execution instruction #{reps} ;
-                             #{reps}", out: out, err: out
-          elsif reqs.class == Array
-            reqs.each do |rep|
-              status = system "echo Executing instruction: #{rep} ;
-                               #{rep}", out: out, err: out
-              return status if !status
-            end
-          end
+          status = to_execute_yield(reqs, out) { |reqs, out|
+            system "echo Execution instruction #{data} ;
+                      #{reqs}", out: out, err: out
+            } 
+        end
+
+        def to_execute_yield(data, out, dir = nil)
+          return yield(data, out, dir) if data.class == String
+          status = nil
+          data.each { |d| status = yield(d, out, dir) ; break if !status }
           return status
-        end 
+        end
 
         def conditions_mg(data, params)
           isPassed = true
@@ -56,17 +57,23 @@ module Build
           end
           return if isPassed
           abort("ERROR: Pre-Conditions not verified") if data.empty?
+=begin
           input = "n"
           loop do
             puts "Continue? (y/n)\n"
             input =  $stdin.gets.chomp
             break if input == "y" or input == "n"
           end
+=end          
+          loop {
+            input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
+            break if %w[y n yes no].any? input
+          }
           abort("Exited by User") if input != "y"
         end
         
         def build(to_filter)
-            data = @cfg.config[:builder]
+            data = @cfg.config[:tasks]
             params = @cfg.config[:params]
             prefix = params[:PREFIX] 
            
@@ -95,20 +102,13 @@ module Build
                 path_make_log = "#{$SOURCE}/#{$FRAMEWORK}/logs/#{tool}.log"
                 out = File.open(path_make_log, "w")
                 puts "Installing #{tool}.."
-                if command[:execute].class == String
-                  to_execute = command[:execute]
-                  status = system "echo Execution instruction: #{to_execute} ;
-                                   cd #{workspace_dir} ;
-                                   #{to_execute}", out: out, err: out
-                    
-                elsif command [:execute].class == Array
-                  command[:execute].each do |to_execute|
-                    status = system "echo Executing instruction: #{to_execute} ;
-                                     cd #{workspace_dir} ; 
-                                     #{to_execute}", out: out, err: out  
-                  break if !status
-                  end
-                end
+      
+                status = to_execute_yield(command[:execute], out, workspace_dir) { |to_execute, out, workspace_dir|
+                  system "echo Execution instruction: #{to_execute} ;
+                          cd #{workspace_dir} ;
+                          #{to_execute}", out: out, err: out
+                } 
+
                 out.close()
 
                 @status_manager.set_status(status, tool)

@@ -51,6 +51,8 @@ module OptionParser
       when /search/
         @opts.store(:command, :search)
         @opts.store(:search, argv)
+      when /clean/
+        @opts.store(:command, :clean)
       when /compare/
         @opts.store(:command, :compare)
         @opts.store(:json, false) 

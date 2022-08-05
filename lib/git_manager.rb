@@ -19,6 +19,9 @@ module Git_Manager
     end
 
     def publish(commit_msg)
+      puts ""
+      puts commit_msg
+      exit
       env_dir = "#{$SOURCE}/#{$FRAMEWORK}"
       create_env() if !File.directory? "#{env_dir}/.git"
      # commit_msg = get_commit_msg("#{$SOURCE}/tools")

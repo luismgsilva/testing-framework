@@ -10,8 +10,7 @@
 			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",
 			"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
 			"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
-		],
-		"version_check":"cat $var(PREFIX)/versions.json"
+		]
 	},
 	"toolchain_baremetal_arc64": {
 		"git": {
@@ -24,8 +23,7 @@
 			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",
 			"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
 			"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
-		],
-		"version_check":"cat $var(PREFIX)/versions.json"
+		]
 	},
 	"toolchain_linux_arc": {
 		"git": {
@@ -35,11 +33,10 @@
 		"execute": [
 			"ruby $var(@CONFIG_SOURCE_PATH)/clean.rb $var(@SOURCE)",
 			"$var(@SOURCE)/configure --prefix=$var(PREFIX) --target=arc --enable-linux ; make -j$var(NJOBS)",
-			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",		
+			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",
 			"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
 			"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
-		],
-		"version_check": "cat $var(PREFIX)/versions.json"
+		]
 	},
 	"toolchain_baremetal_arc": {
 		"git": { 
@@ -52,8 +49,7 @@
 			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",
 			"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
 			"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"	
-		],
-		"version_check":"cat $var(PREFIX)/versions.json"
+		]
 	},
 	"qemu": {
 		"git": { 
@@ -65,7 +61,6 @@
 			"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE) $var(@BUILDNAME)",
 			"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
 			"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/qemu.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
-		],
-		"version_check":"cat $var(PREFIX)/versions.json"
+		]
 	}
 }

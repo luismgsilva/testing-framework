@@ -17,7 +17,7 @@ module Config
         file = get_json(file)
         config = {}
         config.store(:params, tmp)
-        config.store(:builder, file)
+        config.store(:tasks, file)
        
    #     var_manager.check_var_global(config[:builder])
         
@@ -32,7 +32,7 @@ module Config
     end 
     
    def save_config(path_to_save)
-     tmp = @config[:builder]
+     tmp = @config[:tasks]
      
      system "cp -r #{$SOURCE}/#{$FRAMEWORK}/config_source_path #{path_to_save}"
      File.write("#{path_to_save}/config_source_path/config.json", JSON.pretty_generate(tmp))

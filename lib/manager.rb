@@ -30,13 +30,18 @@ module Manager
     def clone(repo)
       @git_manager.get_clone_framework(repo)
     end
-   
+    
+    def clean()
+      system "echo Clearing Tasts Folder ; rm -rf #{$SOURCE}/#{$FRAMEWORK}/tests/*"
+    end 
+
+
     def versions(tool_name)
       cfg = Config::Config.new
       
       internal_params = {}
       internal_params.store(:PREFIX, "#{cfg.config[:params][:PREFIX]}/#{tool_name}")
-      to_execute = @var_manager.prepare_data("#{cfg.config[:builder][tool_name.to_sym][:version_check]}", internal_params)
+      to_execute = @var_manager.prepare_data("#{cfg.config[:tasks][tool_name.to_sym][:version_check]}", internal_params)
       system "#{to_execute}"
     end 
 
@@ -51,14 +56,15 @@ module Manager
       dir2 = "#{@git_manager.tmp_dir(1)}/tests"
 
       tasks = (Dir.children(dir1) & Dir.children(dir2)).select { |d| d =~ /_tests/ }
-     
+    
       tasks.each do |task|
         cfg.config[:params].store(:@BASELINE, "#{dir1}/#{task}")
         cfg.config[:params].store(:@REFERENCE, "#{dir2}/#{task}")
         cfg.config[:params].store(:@BUILDNAME, task)
-        to_execute = @var_manager.prepare_data("#{cfg.config[:builder][task.to_sym][:comparator]}", cfg.config[:params])       
-        json = `gem install terminal-table > /dev/null 2>&1 ; #{to_execute}`
-      
+        
+        to_execute = @var_manager.prepare_data("#{cfg.config[:tasks][task.to_sym][:comparator]}", cfg.config[:params])       
+        json = `#{to_execute}`
+
         if !isJSON
           compare.main(dir1, dir2, task, JSON.parse(json))
         else 
@@ -75,41 +81,29 @@ module Manager
 
     def publish(tool_name)
       cfg = Config::Config.new
-      
-      #tmp
       source_dir = "#{$SOURCE}/#{$FRAMEWORK}/tests"
-      folders = []
-      `find #{source_dir} -name "*_tests"`.split("\n").each { |s| folders.append(s.split("/")[-1]) }     
-      p folders
       
-      bash_coiso = {} 
-      config_tmp = {}
-    #  config = cfg.config[:builder][tool_name.to_sym]
-      builder = cfg.config[:builder] 
-      folders.each do |folder|
-        task = cfg.config[:builder][folder.to_sym][:version_check]
+      commit_msg_hash = {}
+      Dir.children(source_dir).sort.each do |task|
+        to_execute = cfg.config[:tasks][task.to_sym][:publish_header]
+        tmp = {}
 
-     # tmp = config[:version_check]
+        get_commit_msg(to_execute, tmp) { |command, config | 
+          abort("ERROR: Tools version not found") if !system command + "> /dev/null 2>&1"
+          commit_msg = JSON.parse(`#{command}`, symbolize_names: true)
+          tmp.store(commit_msg[:build_name], commit_msg)
+        }
 
-        if task.class == String
-          abort("ERROR: Tools version not found") if !system tmp
-          commit_msg = `#{commit_msg}`
-        elsif task.class == Array
-          config_tmp = {}
-          task.each do |command|
-            abort("ERROR: Tools version not found") if !system command
-            tmp2 = JSON.parse(`#{command}`, symbolize_names: true)
-            config_tmp.store(tmp2[:build_name], tmp2)
-          end
-        end
-        bash_coiso.store(folder, config_tmp)
-        end
-      puts "\n"
-      puts JSON.pretty_generate(bash_coiso)
-
-      @git_manager.publish(JSON.pretty_generate(bash_coiso))
+        commit_msg_hash.store(task, tmp)
+      end
+      @git_manager.publish(JSON.pretty_generate(commit_msg_hash))
     end
-    
+   
+    def get_commit_msg(to_execute, tmp) 
+      return yield(to_execute, tmp) if to_execute.class == String
+      to_execute.each { |command| yield(command, tmp) } if to_execute.class == Array
+    end
+
     def internal_git(command)
       @git_manager.internal_git(command)
     end 
