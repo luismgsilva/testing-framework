@@ -4,7 +4,7 @@ module Status_Manager
   # attr_reader :status
     attr_reader :path_to_status
     def initialize
-     @path_to_status = "#{$SOURCE}/.bla/logs/status"
+     @path_to_status = "#{$PWD}/.bla/logs/status"
     end
     
 

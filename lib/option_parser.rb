@@ -18,7 +18,8 @@ module OptionParser
         @opts.store(:build, argv)
       when /log/
         @opts.store(:command, :log)
-        @opts.store(:log, argv.shift)
+        %w[-t -tail].each { |flag| @opts.store(:flag, true) if argv.include? flag }
+        @opts.store(:log, argv[-1])
       when /help/ 
         @opts.store(:command, :help)
       when /var_list/

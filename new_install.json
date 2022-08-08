@@ -1,0 +1,59 @@
+{
+	"sources": {
+		"arc-gnu-toolchain": {
+			"repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain",
+			"branch": "master"
+		},
+		"qemu": { 
+			"repo": "https://github.com/foss-for-synopsys-dwc-arc-processors/qemu",
+			"branch": "master"
+		}
+	},
+	"tasks": {
+		"toolchain_linux_arc64": {
+			"pre_condition": "test -d $var(@SOURCE)/arc-gnu-toolchain",
+			"execute": [
+				"$var(@SOURCE)/arc-gnu-toolchain/configure --prefix=$var(PREFIX) --target=arc64 --enable-linux ; make -j$var(NJOBS)",
+				"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE)/arc-gnu-toolchain $var(@BUILDNAME)",
+				"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
+				"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
+			]
+		},
+		"toolchain_baremetal_arc64": {
+			"pre_condition": "test -d $var(@SOURCE)/arc-gnu-toolchain",
+			"execute": [
+				"$var(@SOURCE)/arc-gnu-toolchain/configure --prefix=$var(PREFIX) --target=arc64 --disable-qemu --disable-multilib --disable-werror; make -j$var(NJOBS)",
+				"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE)/arc-gnu-toolchain $var(@BUILDNAME)",
+				"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
+				"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
+			]
+		},
+		"toolchain_linux_arc": {
+			"pre_condition": "test -d $var(@SOURCE)/arc-gnu-toolchain",
+			"execute": [
+				"$var(@SOURCE)/arc-gnu-toolchain/configure --prefix=$var(PREFIX) --target=arc --enable-linux ; make -j$var(NJOBS)",
+				"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE)/arc-gnu-toolchain $var(@BUILDNAME)",
+				"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
+				"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
+			]
+		},
+		"toolchain_baremetal_arc": {
+			"pre_condition": "test -d $var(@SOURCE)/arc-gnu-toolchain",
+			"execute": [
+				"$var(@SOURCE)/arc-gnu-toolchain/configure --prefix=$var(PREFIX) --target=arc --disable-qemu --disable-multilib --disable-werror; make -j$var(NJOBS)",
+				"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE)/arc-gnu-toolchain $var(@BUILDNAME)",
+				"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
+				"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/toolchain.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"	
+			]
+		},
+		"qemu": {
+			"pre_condition": "test -d $var(@SOURCE)/qemu",
+			"execute": [
+				"$var(@SOURCE)/qemu/configure --prefix=$var(PREFIX) --target-list=arc-softmmu,arc-linux-user,arc64-softmmu,arc64-linux-user --disable-werror --enable-debug ; make -j$var(NJOBS) ; make install",
+				"ruby $var(@CONFIG_SOURCE_PATH)/versions.rb $var(PREFIX) $var(@SOURCE)/qemu $var(@BUILDNAME)",
+				"mkdir -p $var(MOD_PREFIX)/$var(@BUILDNAME)",
+				"erb prefix=$var(PREFIX) $var(@CONFIG_SOURCE_PATH)/qemu.module.erb > $var(MOD_PREFIX)/$var(@BUILDNAME)/$var(MOD_VERSION).lua"
+			]
+		}
+	}
+}

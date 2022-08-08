@@ -10,7 +10,7 @@ require 'erb'
 require 'git'
 module Manager
   
-  $SOURCE = Dir.getwd
+  $PWD = Dir.getwd
   $FRAMEWORK = ".bla"
   
   class Manager
@@ -32,7 +32,7 @@ module Manager
     end
     
     def clean()
-      system "echo Clearing Tasts Folder ; rm -rf #{$SOURCE}/#{$FRAMEWORK}/tests/*"
+      system "echo Clearing Tasts Folder ; rm -rf #{$PWD}/#{$FRAMEWORK}/tests/*"
     end 
 
 
@@ -81,7 +81,7 @@ module Manager
 
     def publish(tool_name)
       cfg = Config::Config.new
-      source_dir = "#{$SOURCE}/#{$FRAMEWORK}/tests"
+      source_dir = "#{$PWD}/#{$FRAMEWORK}/tests"
       
       commit_msg_hash = {}
       Dir.children(source_dir).sort.each do |task|
@@ -116,9 +116,9 @@ module Manager
       @var_manager.var_list(Config::Config.new)
     end
     
-    def log(name_version)
-      path_from = "#{$SOURCE}/#{$FRAMEWORK}/logs/#{name_version}.log"
-      abort("ERROR: Tool not found") if !system "cat #{path_from}"
+    def log(name_version, isTail)
+      path_from = "#{$PWD}/#{$FRAMEWORK}/logs/#{name_version}.log"
+      abort("ERROR: Tool not found") if !system (isTail) ? "tail -f #{path_from}" : "cat #{path_from}"
     end
   
     def repo_list()

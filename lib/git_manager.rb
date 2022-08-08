@@ -11,7 +11,7 @@ module Git_Manager
       @repo = git_info[:repo]
       @branch = git_info[:branch]
       @name = get_repo_name(@repo)
-      @path_to_clone = "#{$SOURCE}/tools/#{@name}"
+      @path_to_clone = "#{$PWD}/sources/#{@name}"
     end
 
     def executing(to_execute)
@@ -22,9 +22,9 @@ module Git_Manager
       puts ""
       puts commit_msg
       exit
-      env_dir = "#{$SOURCE}/#{$FRAMEWORK}"
+      env_dir = "#{$PWD}/#{$FRAMEWORK}"
       create_env() if !File.directory? "#{env_dir}/.git"
-     # commit_msg = get_commit_msg("#{$SOURCE}/tools")
+     # commit_msg = get_commit_msg("#{$PWD}/tools")
      
 
       to_execute = "cd #{env_dir} ;
@@ -61,14 +61,14 @@ module Git_Manager
     end
     
     def internal_git(command)
-      to_execute = "cd #{$SOURCE}/#{$FRAMEWORK} ; git #{command}"
+      to_execute = "cd #{$PWD}/#{$FRAMEWORK} ; git #{command}"
       executing(to_execute)
-      result = system "cd #{$SOURCE}/#{$FRAMEWORK} ; 
+      result = system "cd #{$PWD}/#{$FRAMEWORK} ; 
                        git #{command}"
     end
 
     def get_clone_framework(repo, branch = 'main')
-      path_to_clone = "#{$SOURCE}/.bla"
+      path_to_clone = "#{$PWD}/.bla"
       system "git clone --branch #{branch} #{repo} #{path_to_clone}"
     end
     
@@ -121,7 +121,7 @@ module Git_Manager
     end
 
     def check_up_to_date(repo)
-      output_exec = `cd #{$SOURCE}/tools/#{repo} ; 
+      output_exec = `cd #{$PWD}/tools/#{repo} ; 
                     git status -uno`
       puts output_exec
     
@@ -129,12 +129,12 @@ module Git_Manager
     end
 
     def get_repo_list()
-      repos = Dir.glob("#{$SOURCE}/tools/*/.git")
+      repos = Dir.glob("#{$PWD}/tools/*/.git")
       repos.map! { |repo| repo.split('/')[-2] }
       repos.each do |repo|
         puts repo + ":"
         #check_up_to_date(repo)
-        puts `cd #{$SOURCE}/tools/#{repo} ; 
+        puts `cd #{$PWD}/tools/#{repo} ; 
               git status -uno`.split('.')[0]
       end
     end

@@ -24,7 +24,7 @@ class Main
     when :status
       manager.status()
     when :log 
-      manager.log(option_parser.opts[:log])
+      manager.log(option_parser.opts[:log], option_parser.opts[:flag])
     when :help
       manager.help()
     when :publish

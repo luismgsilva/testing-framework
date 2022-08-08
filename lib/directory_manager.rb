@@ -11,14 +11,14 @@ module Directory_Manager
       end
     end
     def delete_build_dir(repo_name)
-      path = "#{$SOURCE}/tools/build/#{repo_name}"
+      path = "#{$PWD}/tools/build/#{repo_name}"
       system "rm -rf #{path}" if File.directory? path
     end
   
     def create_directories(name)
-      paths = ["#{$SOURCE}/tools/build/#{name}",
-               "#{$SOURCE}/.bla/logs/#{name}" #,
-              # "#{$SOURCE}/.bla/tests/"
+      paths = ["#{$PWD}/tools/build/#{name}",
+               "#{$PWD}/.bla/logs/#{name}" #,
+              # "#{$PWD}/.bla/tests/"
       ]
       paths.each { |path| create_dir(path) }
     end
