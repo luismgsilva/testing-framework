@@ -25,7 +25,7 @@ module Build
           path_test_log = "#{$PWD}/#{$FRAMEWORK}/logs/#{task}.log"
           out = File.open(path_test_log, "w")
           status = to_execute_yield(reqs, out) { |reqs, out|
-            system "echo Execution instruction #{data} ;
+            system "echo Execution instruction #{reqs} ;
                       #{reqs}", out: out, err: out
             } 
         end
@@ -42,6 +42,7 @@ module Build
           tmp = data.clone
           tmp.each do |task, command|
             next if command[:pre_condition].nil?
+            set_params_dependencies(params, task)
             pre_cond = @var_manager.prepare_data(command[:pre_condition], params) 
             status = pre_conditions_exec(pre_cond, task)
             data.delete(task) and isPassed = false if !status
@@ -51,31 +52,39 @@ module Build
           abort("ERROR: Pre-Conditions not verified") if data.empty?
           loop {
             input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
+            abort("Exited by User") if input != "y"
             break if %w[y n yes no].any? input
           }
-          abort("Exited by User") if input != "y"
         end
         
+        def set_params_dependencies(params, task)
+          params.store(:@SOURCE, "#{$PWD}/sources")
+          params.store(:@BUILDNAME, task.to_s)
+          params.store(:@GIT_TESTS, "#{$PWD}/#{$FRAMEWORK}/tests/")
+        end
+
         def build(to_filter)
-            data = @cfg.config[:tasks]
+            data = @cfg.config[:builder][:tasks]
             params = @cfg.config[:params]
             prefix = params[:PREFIX] 
            
-            data = filter_task(data, to_filter)
+            filter_task(data, to_filter)
             conditions_mg(data, params) #
             data.each do |task, command|
                 prefix_path_to_store = "#{prefix}/#{task}" 
                 params.store(:PREFIX, prefix_path_to_store) if !prefix.nil?
                 
                 @git_manager.set_git(command[:git]) if !command[:git].nil? ##
-                
-         #       params.store(:@SOURCE, "#{$PWD}/tools/#{@git_manager.name}")
-                
-                params.store(:@SOURCE, "#{$PWD}/sources")
+        
 
-                params.store(:@BUILDNAME, task.to_s)
+                set_params_dependencies(params, task)        
+        #        params.store(:@SOURCE, "#{$PWD}/sources/")
+                
+        #        params.store(:@SOURCE, "#{$PWD}/sources")
+
+         #       params.store(:@BUILDNAME, task.to_s)
                 #tmp
-                params.store(:@GIT_TESTS, "#{$PWD}/#{$FRAMEWORK}/tests/")
+          #      params.store(:@GIT_TESTS, "#{$PWD}/#{$FRAMEWORK}/tests/")
 
                 @dir_manager.delete_build_dir(task) ##
       

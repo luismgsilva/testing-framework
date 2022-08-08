@@ -43,6 +43,8 @@ class Main
       manager.compare(option_parser.opts[:compare], option_parser.opts[:json])
     when :clean
       manager.clean()
+    when :sources
+      manager.sources_mg(option_parser.opts[:sources])
     else 
       puts "ERROR: Invalid Operation"
     end

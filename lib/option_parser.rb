@@ -59,6 +59,9 @@ module OptionParser
         @opts.store(:json, false) 
         %w[-j -json].each { |j| @opts.store(:json, true) and argv.delete(j) if argv.include? j }
         @opts.store(:compare, argv)
+      when /sources/
+        @opts.store(:command, :sources)
+        @opts.store(:sources, argv)
       end
     
     end

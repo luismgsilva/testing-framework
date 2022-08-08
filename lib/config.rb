@@ -17,7 +17,7 @@ module Config
         file = get_json(file)
         config = {}
         config.store(:params, tmp)
-        config.store(:tasks, file)
+        config.store(:builder, file)
        
    #     var_manager.check_var_global(config[:builder])
         

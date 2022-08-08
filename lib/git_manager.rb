@@ -14,6 +14,10 @@ module Git_Manager
       @path_to_clone = "#{$PWD}/sources/#{@name}"
     end
 
+    def valid_repo(repo)
+      return system "git ls-remote #{repo} > /dev/null 2>&1"
+    end
+
     def executing(to_execute)
       puts "Executing: #{to_execute}"
     end
@@ -97,14 +101,14 @@ module Git_Manager
     def get_clone()
 
       return if File.directory? (@path_to_clone)
+      
+      git = "git clone " + ((@branch.nil?) ? "" : "--branch #{@branch}") + " #{@repo} #{@path_to_clone}"
 
-      git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
+      #git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
       puts "Cloning into '#{@path_to_clone}'..."
       
       system (git)
-      return
-
-
+      exit
       if !system("#{git} > /dev/null 2>&1")
         puts "ERROR: Something went wrong." ; exit
       end

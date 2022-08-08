@@ -5,6 +5,7 @@ require_relative './status_manager.rb'
 require_relative './var_manager.rb'
 require_relative './build.rb'
 require_relative './compare.rb'
+require_relative './source.rb'
 require 'json'
 require 'erb'
 require 'git'
@@ -18,6 +19,7 @@ module Manager
       @var_manager = Var_Manager::Var_Manager.new()
       @git_manager = Git_Manager::Git_Manager.new()
       @status_manager = Status_Manager::Status_Manager.new()
+      @source = Source::Source.new(@git_manager)
     end
     
     def init(file)
@@ -116,6 +118,26 @@ module Manager
       @var_manager.var_list(Config::Config.new)
     end
     
+    def sources_mg(arr)
+      #tmp
+      @source.set_cfg(Config::Config.new)
+      case arr[0]
+      when /add/
+        @source.add_source(arr[1], arr[2])
+      when /get/
+        @source.get_source(arr[1])
+      when /delete/
+        @source.delete_source(arr[1])
+      when /remove/
+        @source.remove_source(arr[1])
+      when /show/
+        @source.show_sources()
+      end
+  exit
+      @source.add_source(cfg, name, repo)
+    end
+
+
     def log(name_version, isTail)
       path_from = "#{$PWD}/#{$FRAMEWORK}/logs/#{name_version}.log"
       abort("ERROR: Tool not found") if !system (isTail) ? "tail -f #{path_from}" : "cat #{path_from}"
