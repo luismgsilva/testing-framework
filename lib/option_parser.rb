@@ -33,7 +33,6 @@ module OptionParser
         @opts.store(:command, :status) 
       when /publish/
         @opts.store(:command, :publish)
-        @opts.store(:publish, argv.shift)
       when /clone/
         @opts.store(:command, :clone)
         @opts.store(:clone, argv.shift)

@@ -42,7 +42,7 @@ module Build
           tmp = data.clone
           tmp.each do |task, command|
             next if command[:pre_condition].nil?
-            set_params_dependencies(params, task)
+            @cfg.set_params_dependencies(params, task)
             pre_cond = @var_manager.prepare_data(command[:pre_condition], params) 
             status = pre_conditions_exec(pre_cond, task)
             data.delete(task) and isPassed = false if !status
@@ -56,13 +56,15 @@ module Build
             break if %w[y n yes no].any? input
           }
         end
-        
-        def set_params_dependencies(params, task)
-          params.store(:@SOURCE, "#{$PWD}/sources")
-          params.store(:@BUILDNAME, task.to_s)
-          params.store(:@GIT_TESTS, "#{$PWD}/#{$FRAMEWORK}/tests/")
-        end
 
+         
+       # def set_params_dependencies(params, task)
+       #   params.store(:@SOURCE, "#{$PWD}/sources")
+       #   params.store(:@BUILDNAME, task.to_s)
+       #   params.store(:@TASKS_PATH, "#{$PWD}/#{$FRAMEWORK}/tasks/")
+       #   params.store(:@TMP_DIR, "#{$PWD}/.tmp/")
+       # end
+        
         def build(to_filter)
             data = @cfg.config[:builder][:tasks]
             params = @cfg.config[:params]
@@ -77,26 +79,21 @@ module Build
                 @git_manager.set_git(command[:git]) if !command[:git].nil? ##
         
 
-                set_params_dependencies(params, task)        
-        #        params.store(:@SOURCE, "#{$PWD}/sources/")
-                
-        #        params.store(:@SOURCE, "#{$PWD}/sources")
-
-         #       params.store(:@BUILDNAME, task.to_s)
-                #tmp
-          #      params.store(:@GIT_TESTS, "#{$PWD}/#{$FRAMEWORK}/tests/")
+                @cfg.set_params_dependencies(params, task)        
 
                 @dir_manager.delete_build_dir(task) ##
       
-                workspace_dir = "#{$PWD}/tools/build/#{task}" ##                
-                params.store(:@WORKSPACE, workspace_dir) #
+                workspace_dir = params[:@WORKSPACE] #"#{$PWD}/build/#{task}" ##                
+       #         params.store(:@WORKSPACE, workspace_dir) #
                 #command = @var_manager.prepare_data(command, params)
                 command.store(:execute, @var_manager.prepare_data(command[:execute], params))
-                @dir_manager.create_directories(task)
+               # @dir_manager.create_directories(task)
+                @dir_manager.create_dir("#{workspace_dir}")
                 @git_manager.get_clone() if !command[:git].nil?                
                 
-                path_make_log = "#{$PWD}/#{$FRAMEWORK}/logs/#{task}.log"
-                out = File.open(path_make_log, "w")
+                path_make_log = "#{$PWD}/#{$FRAMEWORK}/logs/"
+                @dir_manager.create_dir(path_make_log)
+                out = File.open("#{path_make_log}/#{task}.log", "w")
                 puts "Installing #{task}.."
       
                 status = to_execute_yield(command[:execute], out, workspace_dir) { |to_execute, out, workspace_dir|

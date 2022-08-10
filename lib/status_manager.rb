@@ -8,13 +8,13 @@ module Status_Manager
     end
     
 
-    def set_status(status, tool)
+    def set_status(status, task)
 
       status_msg = status ? "Passed" : "Failed"
       puts status_msg
       
-      system "echo #{status_msg}: #{tool} >> #{@path_to_status} ;
-              sed -i 's/^.*: #{tool}/#{status_msg}: #{tool}/' #{@path_to_status} > /dev/null 2>&1 ;
+      system "echo #{status_msg}: #{task} >> #{@path_to_status} ;
+              sed -i 's/^.*: #{task}/#{status_msg}: #{task}/' #{@path_to_status} > /dev/null 2>&1 ;
               sort -u #{@path_to_status} -o #{@path_to_status}"
     end
   end

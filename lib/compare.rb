@@ -14,9 +14,9 @@ module Compare
       return file
     end 
   
-    def main(dir1, dir2, task, json)
+    def main(dir1, dir2, tasks)
       data = {}
-      table = create_table(dir1, dir2, data, task, json)
+      table = create_table(dir1, dir2, data, tasks)
       puts table
       print_compare(data)
     end
@@ -52,7 +52,7 @@ module Compare
       return ret
     end
 
-    def create_table(dir1, dir2,data, task, json)
+    def create_table(dir1, dir2, data, tasks)
       table = Terminal::Table.new do |t|
         
         header = ["", "D(PASS)", "D(FAIL)", "D(NEW)", "D(REM)",
@@ -66,6 +66,7 @@ module Compare
 
         t.add_row header
         t.add_separator
+        tasks.each do | task, to_execute| 
 
         results1 = read_results(get_file(dir1, task))
         results2 = read_results(get_file(dir2, task))
@@ -85,8 +86,8 @@ module Compare
         row[15] = results2["UNRESOLVED"] || 0
         row[16] = results2["UNSUPPORTED"] || 0
     
-        `mkdir -p ./comparisson`
-    
+        json = JSON.parse(`#{to_execute}`)
+        
         row[1] = json["results_delta"]["new_pass"]
         row[2] = json["results_delta"]["new_fail"]
         row[3] = json["results_delta"]["add_test"]
@@ -103,6 +104,7 @@ module Compare
           end
         end
         data[task] = tmp
+        end
       end
       return table
     end

@@ -15,64 +15,52 @@ module Manager
   $FRAMEWORK = ".bla"
   
   class Manager
-    def initialize
+    def initialize(config_file = nil)
       @var_manager = Var_Manager::Var_Manager.new()
       @git_manager = Git_Manager::Git_Manager.new()
+      @dir_manager = Directory_Manager::Directory_Manager.new
       @status_manager = Status_Manager::Status_Manager.new()
-      @source = Source::Source.new(@git_manager)
+      @cfg = Config::Config.new(config_file, @var_manager, @dir_manager)
+      
+      @source = Source::Source.new(@git_manager, @cfg)
     end
     
-    def init(file)
-      Config::Config.new(file, @var_manager)
-    end
-
-    def save_config(path_to_save)
-      Config::Config.new.save_config(path_to_save)
+    def save_config(dir_to)
+      @cfg.save_config(dir_to)
     end    
     def clone(repo)
       @git_manager.get_clone_framework(repo)
     end
-    
     def clean()
-      system "echo Clearing Tasts Folder ; rm -rf #{$PWD}/#{$FRAMEWORK}/tests/*"
-    end 
-
-
-    def versions(tool_name)
-      cfg = Config::Config.new
-      
-      internal_params = {}
-      internal_params.store(:PREFIX, "#{cfg.config[:params][:PREFIX]}/#{tool_name}")
-      to_execute = @var_manager.prepare_data("#{cfg.config[:tasks][tool_name.to_sym][:version_check]}", internal_params)
-      system "#{to_execute}"
+      @dir_manager.clean_tasks_folder()
     end 
 
     def compare(arr, isJSON)
-     
-      cfg = Config::Config.new
+      
       compare = Compare::Compare.new
 
       @git_manager.create_worktree(arr)
       
-      dir1 = "#{@git_manager.tmp_dir(0)}/tests"
-      dir2 = "#{@git_manager.tmp_dir(1)}/tests"
-
+      dir1 = "#{@git_manager.tmp_dir(0)}/tasks"
+      dir2 = "#{@git_manager.tmp_dir(1)}/tasks"
       tasks = (Dir.children(dir1) & Dir.children(dir2)).select { |d| d =~ /_tests/ }
-    
+      
+      to_execute_commands = {}
+      params = @cfg.config[:params]
       tasks.each do |task|
-        cfg.config[:params].store(:@BASELINE, "#{dir1}/#{task}")
-        cfg.config[:params].store(:@REFERENCE, "#{dir2}/#{task}")
-        cfg.config[:params].store(:@BUILDNAME, task)
-        
-        to_execute = @var_manager.prepare_data("#{cfg.config[:tasks][task.to_sym][:comparator]}", cfg.config[:params])       
-        json = `#{to_execute}`
+        @cfg.set_params_dependencies(params, task, "#{dir1}/#{task}", "#{dir2}/#{task}")
 
-        if !isJSON
-          compare.main(dir1, dir2, task, JSON.parse(json))
-        else 
-          puts "\n #{task}: \n #{json}"
-        end
+        data_to_prepare = @cfg.config[:builder][:tasks][task.to_sym][:comparator]
+        to_execute = @var_manager.prepare_data(data_to_prepare, params)       
+        to_execute_commands.store(task, to_execute)
       end
+
+      if !isJSON
+        compare.main(dir1, dir2, to_execute_commands)
+      else
+        to_execute_commands.each { |task, to_execute| puts "\n #{task}: \n " + `#{to_execute}` }
+      end
+      
       @git_manager.remove_worktree()    
     end
 
@@ -80,30 +68,33 @@ module Manager
       @git_manager.search_log(params)
     end
 
-
-    def publish(tool_name)
-      cfg = Config::Config.new
-      source_dir = "#{$PWD}/#{$FRAMEWORK}/tests"
+    def publish()
+      source_dir = "#{$PWD}/#{$FRAMEWORK}/tasks"
       
       commit_msg_hash = {}
       Dir.children(source_dir).sort.each do |task|
-        to_execute = cfg.config[:tasks][task.to_sym][:publish_header]
-        tmp = {}
-
-        get_commit_msg(to_execute, tmp) { |command, config | 
+       
+        to_execute = @cfg.config[:builder][:tasks][task.to_sym][:publish_header]
+        
+        params = @cfg.config[:params]
+        @cfg.set_params_dependencies(params, task)
+        to_execute = @var_manager.prepare_data(to_execute, params)
+        
+        place_holder = {}
+        get_commit_msg(to_execute, place_holder) { |command, config | 
           abort("ERROR: Tools version not found") if !system command + "> /dev/null 2>&1"
           commit_msg = JSON.parse(`#{command}`, symbolize_names: true)
-          tmp.store(commit_msg[:build_name], commit_msg)
+          place_holder.store(commit_msg[:build_name], commit_msg)
         }
 
-        commit_msg_hash.store(task, tmp)
+        commit_msg_hash.store(task, place_holder)
       end
       @git_manager.publish(JSON.pretty_generate(commit_msg_hash))
     end
    
-    def get_commit_msg(to_execute, tmp) 
-      return yield(to_execute, tmp) if to_execute.class == String
-      to_execute.each { |command| yield(command, tmp) } if to_execute.class == Array
+    def get_commit_msg(to_execute, place_holder) 
+      return yield(to_execute, place_holder) if to_execute.class == String
+      to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
     end
 
     def internal_git(command)
@@ -115,26 +106,31 @@ module Manager
     end
   
     def var_list()
-      @var_manager.var_list(Config::Config.new)
+      @var_manager.var_list(@cfg)
     end
     
-    def sources_mg(arr)
-      #tmp
-      @source.set_cfg(Config::Config.new)
-      case arr[0]
+    def sources_mg(commands)
+
+      case commands[0]
       when /add/
-        @source.add_source(arr[1], arr[2])
+        @source.add_source(commands[1], commands[2])
       when /get/
-        @source.get_source(arr[1])
+        @source.get_source(commands[1])
       when /delete/
-        @source.delete_source(arr[1])
+        @source.delete_source(commands[1])
       when /remove/
-        @source.remove_source(arr[1])
+        @source.remove_source(commands[1])
+      when /list/
+        @source.list_sources()
       when /show/
         @source.show_sources()
+      when /pull/
+        @source.pull_sources(commands[1])
+      when /state/
+        @source.state_sources(commands[1])
+      else 
+        puts "ERROR: Invalid Source Option"
       end
-  exit
-      @source.add_source(cfg, name, repo)
     end
 
 
@@ -148,26 +144,21 @@ module Manager
     end
   
     def build(filter = nil)
-      cfg = Config::Config.new
-      git_manager = Git_Manager::Git_Manager.new
-      dir_manager = Directory_Manager::Directory_Manager.new
-  
-      Build::Build.new(cfg, git_manager, dir_manager, @var_manager, @status_manager, filter)
+      Build::Build.new(@cfg, @git_manager, @dir_manager, @var_manager, @status_manager, filter)
     end
 
     def set(str)
-      cfg = Config::Config.new()
       command = str.split('=').first
       path = str.split('=').last
     
       abort("ERROR: not a editable variable") if command =~/[\@]/
-      abort("ERROR: #{command} not a variable") if !@var_manager.verify_if_var_exists(cfg.config, command)
+      abort("ERROR: #{command} not a variable") if !@var_manager.verify_if_var_exists(@cfg.config, command)
     
-      params = cfg.config[:params]
+      params = @cfg.config[:params]
       params.store(command.to_sym, "#{path}")
-      cfg.config.store(:params, params)
+      @cfg.config.store(:params, params)
     
-      cfg.set_json()
+      @cfg.set_json()
     end
   
     def help()

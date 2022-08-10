@@ -2,18 +2,21 @@ module Source
   class Source
     
 
-    def initialize(git_manager)
+    def initialize(git_manager, cfg)
       @git_manager = git_manager
-    end
-
-    def set_cfg(cfg)
       @cfg = cfg
-      @sources = @cfg.config[:builder][:sources]
+     # puts JSON.pretty_generate @cfg.config
+     # exit
+     # @sources = @cfg.config[:builder][:sources]
+    end
+    
+    def get_sources_config()
+      return @cfg.config[:builder][:sources]
     end
 
     def get_source(name)
       abort("ERROR: '#{name}' not a registered Git Repo") if !exists_repo(name) 
-      @git_manager.set_git(@sources[name.to_sym]) 
+      @git_manager.set_git(get_sources_config[name.to_sym]) 
       @git_manager.get_clone 
     end
 
@@ -22,7 +25,7 @@ module Source
       tmp = {}
       tmp.store(:repo, repo)
       tmp.store(:branch, branch) if !branch.nil?
-      @sources.store(name, tmp)
+      get_sources_config.store(name, tmp)
       @cfg.set_json()
     end
 
@@ -33,13 +36,32 @@ module Source
     end
     def remove_source(name)
      # delete_source()
-      @sources.delete(name.to_sym)
+      get_sources_config.delete(name.to_sym)
       @cfg.set_json()
     end
-  
-    def exists_repo(name)
-      return @sources.has_key? name.to_sym
 
+    def pull_sources(repo_name)
+      abort("ERROR: #{repo_name} not found in sources") if !Dir.children("#{$PWD}/sources").include? repo_name
+      @git_manager.to_hard_pull("#{$PWD}/sources/#{repo_name}")
+    end
+
+    def state_sources(repo_name)
+      abort("ERROR: #{repo_name} not found in sources") if !Dir.children("#{$PWD}/sources").include? repo_name
+      @git_manager.check_up_to_date(repo_name)
+    end 
+
+    def list_sources()
+      get_sources_config.each do |source, tmp|
+        puts source 
+        tmp.each { |key, value| puts "   #{key}: #{value}" }
+      end
+    end
+    def show_sources()
+      abort("ERROR: No sources cloned yet") if !File.directory? "#{$PWD}/sources"
+      Dir.children("#{$PWD}/sources").sort.each { |source| puts source }
+    end
+    def exists_repo(name)
+      return get_sources_config.has_key? name.to_sym
     end
   end
 end

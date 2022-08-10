@@ -5,46 +5,46 @@ require_relative './lib/manager.rb'
 class Main
   def initialize
     option_parser = OptionParser::OptionParser.new(ARGV)
-    manager = Manager::Manager.new
-    main(option_parser, manager)
+   # manager = Manager::Manager.new
+    main(option_parser)
   end
 
-  def main(option_parser, manager)
+  def main(option_parser)
     case option_parser.opts[:command]
     when :init
-      manager.init(option_parser.opts[:file])
+      Manager::Manager.new(option_parser.opts[:file])
     when :build
-      manager.build(option_parser.opts[:build])
+      Manager::Manager.new.build(option_parser.opts[:build])
     when :set
-      manager.set(option_parser.opts[:set])
+      Manager::Manager.new.set(option_parser.opts[:set])
     when :var_list
-      manager.var_list()
+      Manager::Manager.new.var_list()
     when :repo_list
-      manager.repo_list()
+      Manager::Manager.new.repo_list()
     when :status
-      manager.status()
+      Manager::Manager.new.status()
     when :log 
-      manager.log(option_parser.opts[:log], option_parser.opts[:flag])
+      Manager::Manager.new.log(option_parser.opts[:log], option_parser.opts[:flag])
     when :help
-      manager.help()
+      Manager::Manager.new.help()
     when :publish
-      manager.publish(option_parser.opts[:publish])
+      Manager::Manager.new.publish()
     when :clone
-      manager.clone(option_parser.opts[:clone])
+      Manager::Manager.new.clone(option_parser.opts[:clone])
     when :git
-      manager.internal_git(option_parser.opts[:git])
+      Manager::Manager.new.internal_git(option_parser.opts[:git])
     when :save_config
-      manager.save_config(option_parser.opts[:save_config])
+      Manager::Manager.new.save_config(option_parser.opts[:save_config])
     when :versions
-      manager.versions(option_parser.opts[:versions])
+      Manager::Manager.new.versions(option_parser.opts[:versions])
     when :search
-      manager.search_log(option_parser.opts[:search])
+      Manager::Manager.new.search_log(option_parser.opts[:search])
     when :compare
-      manager.compare(option_parser.opts[:compare], option_parser.opts[:json])
+      Manager::Manager.new.compare(option_parser.opts[:compare], option_parser.opts[:json])
     when :clean
-      manager.clean()
+      Manager::Manager.new.clean()
     when :sources
-      manager.sources_mg(option_parser.opts[:sources])
+      Manager::Manager.new.sources_mg(option_parser.opts[:sources])
     else 
       puts "ERROR: Invalid Operation"
     end

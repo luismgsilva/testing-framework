@@ -20,25 +20,33 @@ module Git_Manager
 
     def executing(to_execute)
       puts "Executing: #{to_execute}"
+      return system to_execute
+    end
+      
+    def to_hard_pull(dir)
+      if !check_up_to_date(dir)
+        hard_pull(dir)
+      end
     end
 
     def publish(commit_msg)
-      puts ""
-      puts commit_msg
-      exit
       env_dir = "#{$PWD}/#{$FRAMEWORK}"
+      
       create_env() if !File.directory? "#{env_dir}/.git"
-     # commit_msg = get_commit_msg("#{$PWD}/tools")
-     
-
+      
+      #if !check_up_to_date(env_dir)
+      #  hard_pull(env_dir)
+      #end 
+       
       to_execute = "cd #{env_dir} ;
                     git add . ;
-                    git commit -m '#{commit_msg}' ;
-                    git push -u origin main "
+                    git commit -m '#{commit_msg}'"
+               #     git push"    
+               # git push -u origin main 
      
       executing("\n#{to_execute.squeeze(" ").strip}")
-    
-      system to_execute
+
+     # system to_execute
     end
   
     #tmp
@@ -66,14 +74,14 @@ module Git_Manager
     
     def internal_git(command)
       to_execute = "cd #{$PWD}/#{$FRAMEWORK} ; git #{command}"
-      executing(to_execute)
-      result = system "cd #{$PWD}/#{$FRAMEWORK} ; 
-                       git #{command}"
+      result = executing(to_execute)
+     # result = system "cd #{$PWD}/#{$FRAMEWORK} ; 
+     #                  git #{command}"
     end
 
-    def get_clone_framework(repo, branch = 'main')
+    def get_clone_framework(repo, branch = nil)
       path_to_clone = "#{$PWD}/.bla"
-      system "git clone --branch #{branch} #{repo} #{path_to_clone}"
+      system "git clone " + ((branch.nil?) ? "" : " --branch #{branch} ") + " #{repo} #{path_to_clone}"
     end
     
     # DELETE THIS
@@ -117,32 +125,42 @@ module Git_Manager
     def if_already_exists(path_to_clone)
       return File.directory? @path_to_clone   
     end
+    
+    def hard_pull(repo_dir)
+      puts "Pulling.."
 
+      executing "cd #{repo_dir} ;
+              git reset --hard ;
+              git pull --force"
+    end
+
+=begin
     def fetch_repo(path_to_clone)
       if !system("git fetch #{path_to_clone}")
         puts "ERROR: Something went wrong." ; exit
       end
     end
-
-    def check_up_to_date(repo)
-      output_exec = `cd #{$PWD}/tools/#{repo} ; 
+=end
+    def check_up_to_date(repo_dir)
+      output_exec = `cd #{repo_dir} ; 
+                    git remote update ; 
                     git status -uno`
       puts output_exec
     
       return output_exec =~ /up\sto\sdate/
     end
-
+=begin
     def get_repo_list()
-      repos = Dir.glob("#{$PWD}/tools/*/.git")
+      repos = Dir.glob("#{$PWD}/sources/*/.git")
       repos.map! { |repo| repo.split('/')[-2] }
       repos.each do |repo|
         puts repo + ":"
         #check_up_to_date(repo)
-        puts `cd #{$PWD}/tools/#{repo} ; 
+        puts `cd #{$PWD}/sources#{repo} ; 
               git status -uno`.split('.')[0]
       end
     end
-
+=end
     def get_repo_name(repo)
       exprex = /\.git/
       name = repo.split('/').last
