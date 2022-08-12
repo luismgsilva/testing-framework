@@ -2,15 +2,6 @@ module Directory_Manager
 
   class Directory_Manager
 
-    # def create_dir(path)
-    #   recursive = path.split('/')
-    #   path = ''
-    #   recursive.each do |dir|
-    #     path += dir + '/'
-    #     system "mkdir #{path}" unless File.directory? (path)
-    #   end
-    # end
-
     def get_config_source_path()
       "#{$PWD}/#{$FRAMEWORK}/config_source_path"
     end
@@ -31,9 +22,14 @@ module Directory_Manager
       system "echo Clearing Tasks Folder ;
               rm -rf #{$PWD}/#{$FRAMEWORK}/tasks/*"
     end
+    def get_compare_dir()
+      dir = "#{$PWD}/build/compare/"
+      create_dir(dir)
+      return "#{dir}/1", "#{dir}/2"
+    end
     def create_directories(name)
       paths = ["#{$PWD}/build/#{name}",
-               "#{$PWD}/.bla/logs/" #,
+               "#{$PWD}/#{$FRAMEWORK}/logs/" #,
               # "#{$PWD}/.bla/tests/"
       ]
       paths.each { |path| create_dir(path) }

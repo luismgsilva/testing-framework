@@ -80,7 +80,7 @@ module Git_Manager
     end
 
     def get_clone_framework(repo, branch = nil)
-      path_to_clone = "#{$PWD}/.bla"
+      path_to_clone = "#{$PWD}/#{$FRAMEWORK}"
       system "git clone " + ((branch.nil?) ? "" : " --branch #{branch} ") + " #{repo} #{path_to_clone}"
     end
     
@@ -93,17 +93,17 @@ module Git_Manager
       "/scratch/luiss/tmp/#{i}"
     end
 
-    def create_worktree(arr)
+    def create_worktree(arr, dir1, dir2)
       baseline = arr[0]
       reference = (arr[1].nil?) ? "HEAD" : arr[1]
 
-      internal_git("worktree add #{tmp_dir(0)} #{baseline} > /dev/null 2>&1")
-      internal_git("worktree add #{tmp_dir(1)} #{reference} > /dev/null 2>&1")
+      internal_git("worktree add #{dir1} #{baseline} > /dev/null 2>&1")
+      internal_git("worktree add #{dir2} #{reference} > /dev/null 2>&1")
     end
 
-    def remove_worktree()
-      internal_git("worktree remove #{tmp_dir(0)}")
-      internal_git("worktree remove #{tmp_dir(1)}")
+    def remove_worktree(dir1, dir2)
+      internal_git("worktree remove #{dir1}")
+      internal_git("worktree remove #{dir2}")
     end
 
     def get_clone()

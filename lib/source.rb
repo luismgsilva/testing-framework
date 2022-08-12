@@ -15,7 +15,7 @@ module Source
     end
 
     def get_source(name)
-      abort("ERROR: '#{name}' not a registered Git Repo") if !exists_repo(name) 
+      abort("ERROR: '#{name}' not a registered Git Repo") if !name.nil? and !exists_repo(name) 
       @git_manager.set_git(get_sources_config[name.to_sym]) 
       @git_manager.get_clone 
     end

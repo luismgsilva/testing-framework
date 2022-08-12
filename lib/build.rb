@@ -18,60 +18,46 @@ module Build
             data = data.delete_if { |d| !to_filter.include? d }
         end
 
-        def pre_conditions_exec(reqs, task)
-          # temporario
-          system "mkdir -p #{$PWD}/#{$FRAMEWORK}/logs/" if !File.directory? "#{$PWD}/#{$FRAMEWORK}/logs/"
-          # temporario
-          path_test_log = "#{$PWD}/#{$FRAMEWORK}/logs/#{task}.log"
-          out = File.open(path_test_log, "w")
-          status = to_execute_yield(reqs, out) { |reqs, out|
-            system "echo Execution instruction #{reqs} ;
-                      #{reqs}", out: out, err: out
-            } 
-        end
 
-        def to_execute_yield(data, out, dir = nil)
-          return yield(data, out, dir) if data.class == String
-          status = nil
-          data.each { |d| status = yield(d, out, dir) ; break if !status }
-          return status
-        end
+      def pre_condition(data, params, path_log)
+        data_cloned = data.clone
+        fails = {}
 
-        def conditions_mg(data, params)
-          isPassed = true
-          tmp = data.clone
-          tmp.each do |task, command|
-            next if command[:pre_condition].nil?
-            @cfg.set_params_dependencies(params, task)
-            pre_cond = @var_manager.prepare_data(command[:pre_condition], params) 
-            status = pre_conditions_exec(pre_cond, task)
-            data.delete(task) and isPassed = false if !status
-            puts (status) ? "Passed Pre-Condition: #{task}" : "Failed Pre-Condition: #{task}"
+        data_cloned.each_pair do |task, command|
+          next if command[:pre_condition].nil?
+          @cfg.set_params_dependencies(params, task)
+          to_execute = @var_manager.prepare_data(command[:pre_condition], params)
+          
+          out = File.open("#{path_log}/#{task}.log", "w")
+          
+          to_execute = [to_execute] if to_execute.class == String
+          to_execute.each do |execute|
+            status = system("echo Executing: #{execute} ; #{execute}", out: out, err: out)
+            fails.store(task, execute) and break if !status
           end
-          return if isPassed
-          abort("ERROR: Pre-Conditions not verified") if data.empty?
-          loop {
-            input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
-            abort("Exited by User") if input != "y"
-            break if %w[y n yes no].any? input
-          }
         end
-
-         
-       # def set_params_dependencies(params, task)
-       #   params.store(:@SOURCE, "#{$PWD}/sources")
-       #   params.store(:@BUILDNAME, task.to_s)
-       #   params.store(:@TASKS_PATH, "#{$PWD}/#{$FRAMEWORK}/tasks/")
-       #   params.store(:@TMP_DIR, "#{$PWD}/.tmp/")
-       # end
+        data.keep_if { |k,v| !fails.has_key? k}
+          
+        data.each_pair { |task, command| puts "Passed Pre-Condition: #{task}" }
+        fails.each { |task, command| puts "Failed Pre-Condition: #{task}\n\sInstruction: #{command}" }
+        exit -1 if data.empty?
+        loop {
+          input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
+          break if %w[y yes].any? input
+          abort("Exited by User") if %w[n no].any? input
+        } if !fails.empty?
+      end
+      
         
         def build(to_filter)
             data = @cfg.config[:builder][:tasks]
             params = @cfg.config[:params]
             prefix = params[:PREFIX] 
-           
+            log_path = "#{$PWD}/#{$FRAMEWORK}/logs/"
+            @dir_manager.create_dir(log_path)
+             
             filter_task(data, to_filter)
-            conditions_mg(data, params) #
+            pre_condition(data, params, log_path)
             data.each do |task, command|
                 prefix_path_to_store = "#{prefix}/#{task}" 
                 params.store(:PREFIX, prefix_path_to_store) if !prefix.nil?
@@ -83,30 +69,28 @@ module Build
 
                 @dir_manager.delete_build_dir(task) ##
       
-                workspace_dir = params[:@WORKSPACE] #"#{$PWD}/build/#{task}" ##                
-       #         params.store(:@WORKSPACE, workspace_dir) #
-                #command = @var_manager.prepare_data(command, params)
+                workspace_dir = params[:@WORKSPACE]               
                 command.store(:execute, @var_manager.prepare_data(command[:execute], params))
-               # @dir_manager.create_directories(task)
-                @dir_manager.create_dir("#{workspace_dir}")
+                @dir_manager.create_dir(workspace_dir)
                 @git_manager.get_clone() if !command[:git].nil?                
                 
-                path_make_log = "#{$PWD}/#{$FRAMEWORK}/logs/"
-                @dir_manager.create_dir(path_make_log)
-                out = File.open("#{path_make_log}/#{task}.log", "w")
-                puts "Installing #{task}.."
-      
-                status = to_execute_yield(command[:execute], out, workspace_dir) { |to_execute, out, workspace_dir|
-                  system "echo Execution instruction: #{to_execute} ;
-                          cd #{workspace_dir} ;
-                          #{to_execute}", out: out, err: out
-                } 
+                out = File.open("#{log_path}/#{task}.log", "w")
+                puts "Executing #{task}.."
+                
+                to_execute = command[:execute]
+                status = nil
+                to_execute = [to_execute] if to_execute.class == String
+                to_execute.each do |execute|
+                  status = system "echo Execution instruction: #{execute} ;
+                                  cd #{workspace_dir} ;
+                                  #{execute}", out: out, err: out
+                  break if !status
+                end
 
                 out.close()
 
                 @status_manager.set_status(status, task)
             end
           end
-          
     end
 end

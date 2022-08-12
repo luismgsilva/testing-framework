@@ -89,7 +89,7 @@
       "execute": [
         "erb gcc_dir=$var(@SOURCE)/arc-gnu-toolchain/gcc/ toolchain_tripplet=arc-linux-gnu target_alias=arc-linux-gnu target_list=arc-linux-qemu-user toolchain_dir=$var(@SOURCE)/toolchain qemu_opts=\"-L $(dirname $(which arc-linux-gnu-gcc))/../sysroot\"  $var(@CONFIG_SOURCE_PATH)/linux_qemu_user.siteexp.erb > $var(@WORKSPACE)/site.exp",
         "mkdir -p $var(@WORKSPACE)/tmp ; mkdir -p $var(@WORKSPACE)/dump1 ; mkdir -p $var(@WORKSPACE)/dump2",
-        "QEMU_HOME=$(dirname $(which qemu-system-arc))../ runtest dg.exp ; echo ''",
+        "QEMU_HOME=$(dirname $(which qemu-system-arc))/../ runtest dg.exp ; echo ''",
         "mkdir -p $var(@PERSISTENT_WS) ; cp $var(@WORKSPACE)/gcc.sum $var(@WORKSPACE)/gcc.log $var(@PERSISTENT_WS)",
         "cp $(dirname $(which arc-linux-gnu-gcc))/../versions.json $var(@WORKSPACE)/toolchain_linux_arc.json",
         "cp $(dirname $(which qemu-system-arc))/../versions.json $var(@WORKSPACE)/qemu.json"

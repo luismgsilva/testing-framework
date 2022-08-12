@@ -12,7 +12,7 @@ require 'git'
 module Manager
   
   $PWD = Dir.getwd
-  $FRAMEWORK = ".bla"
+  $FRAMEWORK = ".bsf"
   
   class Manager
     def initialize(config_file = nil)
@@ -38,11 +38,12 @@ module Manager
     def compare(arr, isJSON)
       
       compare = Compare::Compare.new
-
-      @git_manager.create_worktree(arr)
+     
+      dir1, dir2 = @dir_manager.get_compare_dir()
+      @git_manager.create_worktree(arr, dir1, dir2)
       
-      dir1 = "#{@git_manager.tmp_dir(0)}/tasks"
-      dir2 = "#{@git_manager.tmp_dir(1)}/tasks"
+      dir1 += "/tasks"
+      dir2 += "/tasks"
       tasks = (Dir.children(dir1) & Dir.children(dir2)).select { |d| d =~ /_tests/ }
       
       to_execute_commands = {}
@@ -61,7 +62,8 @@ module Manager
         to_execute_commands.each { |task, to_execute| puts "\n #{task}: \n " + `#{to_execute}` }
       end
       
-      @git_manager.remove_worktree()    
+      dir1, dir2 = @dir_manager.get_compare_dir()
+      @git_manager.remove_worktree(dir1, dir2)    
     end
 
     def search_log(params)
@@ -115,6 +117,7 @@ module Manager
       when /add/
         @source.add_source(commands[1], commands[2])
       when /get/
+        abort("badjoras") if commands[1].nil?
         @source.get_source(commands[1])
       when /delete/
         @source.delete_source(commands[1])
