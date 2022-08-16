@@ -4,28 +4,23 @@ require_relative './lib/manager.rb'
 
 class Main
   def initialize
-    #option_parser = OptionParser::OptionParser.new(ARGV)
-    #option_parser = OptionParser::OptionParser.new
-   # manager = Manager::Manager.new
-    #option_parser.parse(ARGV)
-    #main(option_parser)
     opt = OptionParser::OptionParser.new
     option_parser_default_initializer(opt)
     option_parser_conditions_initializer(opt)
   end
   def option_parser_conditions_initializer(opt)
 
-    opt.condition("sources add <name> <gitrepo> {<branch>}") { |opts| Manager::Manager.new.add_sources(opts[:name], opts[:gitrepo], opts[:branch]) } 
-    opt.condition("sources get {<name>}") { |opts| Manager::Manager.new.get_sources(opts[:name]) } 
+    opt.condition("sources add <name> <gitrepo> {branch}") { |opts| Manager::Manager.new.add_sources(opts[:name], opts[:gitrepo], opts[:branch]) } 
+    opt.condition("sources get ${name}") { |opts| Manager::Manager.new.get_sources(opts[:name]) } 
     opt.condition("sources remove <name>") { |opts| Manager::Manager.new.remove_sources(opts[:name]) } 
     opt.condition("sources delete <name>") { |opts| Manager::Manager.new.delete_sources(opts[:name]) } 
     opt.condition("sources list") { |opts| Manager::Manager.new.list_sources() } 
     opt.condition("sources show") { |opts| Manager::Manager.new.show_sources() } 
-    opt.condition("sources pull {<name>}") { |opts| Manager::Manager.new.pull_sources(opts[:name]) } 
+    opt.condition("sources pull {name}") { |opts| Manager::Manager.new.pull_sources(opts[:name]) } 
     opt.condition("sources <name> git <gitcommand>") { |opts| Manager::Manager.git_sources(opts[:name], opts[:gitcommand]) } 
 
     opt.condition("init <folderpath>") { |opts| Manager::Manager.new(opts[:folderpath]) } 
-    opt.condition("build {$<task>}") { |opts| Manager::Manager.new.build(opts[:task]) } 
+    opt.condition("execute ${task}") { |opts| Manager::Manager.new.build(opts[:task]) } 
     opt.condition("log {-t} <task>") { |opts| Manager::Manager.new.log(opts[:task], opts[:t]) } 
     opt.condition("help") { |opts|  } 
     opt.condition("list") { |opts| Manager::Manager.new.var_list() } 
@@ -37,7 +32,7 @@ class Main
     opt.condition("save config <pathtosave>") { |opts| Manager::Manager.new.save_config(opts[:pathtosave]) } 
     opt.condition("search <var>=<value>") { |opts| Manager::Manager.new.search_log(opts[:var], opts[:value]) } 
     opt.condition("clean") { |opts| Manager::Manager.new.clean() } 
-    opt.condition("compare {-j} <hash1> {<hash2>}") { |opts| Manager::Manager.new.compare(opts[:hash1], opts[:hash2], opts[:j])  }
+    opt.condition("compare {-j} <hash1> {hash2}") { |opts| Manager::Manager.new.compare(opts[:hash1], opts[:hash2], opts[:j])  }
     
     opt.condition("hard reset {-y}") { |opts| Manager::Manager.new.hard_reset(opts[:y]) } 
     opt.parse(ARGV)
@@ -52,7 +47,7 @@ class Main
       $<> Mandatory with possibility to multiple Arguments
 
       sources add <name> <gitrepo>       Add a new Git Repository to the internal config file
-      sources get {<name>}                 Clone a new Git Repository to the system
+      sources get ${name}                Clone a new Git Repository to the system
       sources remove <name>              Remove a Git Repository from the internal config file
       sources delete <name>              Delete a Git Repository from the system
       sources list                       List all the Git Repositories in the system
@@ -60,7 +55,7 @@ class Main
 
       init <folderpath>                  Create a new Framework Environment or reinitialize an existing one
       clone <gitrepo>                    Clone an existing Framework Environment 
-      build {$<task>}                    Execute the task's 
+      execute ${task}                    Execute the task's 
       log {-t} <task>                    print or follow the task's log
       help                               You know exactly what this does. Don't you? *wink*
       list                               Lists all the Input Variables in the system
@@ -71,54 +66,11 @@ class Main
       save config <pathtosave>           Saves internal config with dependencies to pathtosave
       search <var>=<value>               Searchs on git log's commit message
       clean                              Cleans persistent folder (eg. tasks' tests)
-      compare {-j} <hash1> {<hash2>}     Compares tests from hash1 to hash2 (Or HEAD if hash2 not given)
-                                       -j flag prints JSON file only
+      compare {-j} <hash1> {hash2}     Compares tests from hash1 to hash2 (Or HEAD if hash2 not given)
+                                         -j flag prints JSON file only
       EOF
     end
   end
-=begin
-  def main(option_parser)
-    case option_parser.opts[:command]
-    when :init
-      Manager::Manager.new(option_parser.opts[:file])
-    when :build
-      Manager::Manager.new.build(option_parser.opts[:build])
-    when :set
-      Manager::Manager.new.set(option_parser.opts[:set])
-    when :var_list
-      Manager::Manager.new.var_list()
-    when :repo_list
-      Manager::Manager.new.repo_list()
-    when :status
-      Manager::Manager.new.status()
-    when :log 
-      Manager::Manager.new.log(option_parser.opts[:log], option_parser.opts[:flag])
-    when :help
-      Manager::Manager.new.help()
-    when :publish
-      Manager::Manager.new.publish()
-    when :clone
-      Manager::Manager.new.clone(option_parser.opts[:clone])
-    when :git
-      Manager::Manager.new.internal_git(option_parser.opts[:git])
-    when :save_config
-      Manager::Manager.new.save_config(option_parser.opts[:save_config])
-    when :versions
-      Manager::Manager.new.versions(option_parser.opts[:versions])
-    when :search
-      Manager::Manager.new.search_log(option_parser.opts[:search])
-    when :compare
-      Manager::Manager.new.compare(option_parser.opts[:compare], option_parser.opts[:json])
-    when :clean
-      Manager::Manager.new.clean()
-    when :sources
-      Manager::Manager.new.sources_mg(option_parser.opts[:sources])
-    else 
-      puts "ERROR: Invalid Operation"
-    end
+end
 
-  end
-end
-=end
-end
 Main.new
