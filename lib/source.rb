@@ -14,13 +14,20 @@ module Source
       return @cfg.config[:builder][:sources]
     end
 
-    def get_source(name)
+    def get_sources(name = nil)
+      if name.nil?
+        get_sources_config.each_pair do |k, v|
+          @git_manager.set_git(v) 
+          @git_manager.get_clone
+        end
+      end
+        exit
       abort("ERROR: '#{name}' not a registered Git Repo") if !name.nil? and !exists_repo(name) 
       @git_manager.set_git(get_sources_config[name.to_sym]) 
       @git_manager.get_clone 
     end
 
-    def add_source(name, repo, branch = nil)
+    def add_sources(name, repo, branch = nil)
       abort("ERROR: Git Repo not valid") if !@git_manager.valid_repo(repo)  
       tmp = {}
       tmp.store(:repo, repo)
@@ -29,12 +36,12 @@ module Source
       @cfg.set_json()
     end
 
-    def delete_source(name)
+    def delete_sources(name)
       source_dir = "#{$PWD}/sources/#{name}"
       abort("ERROR: '#{name}' not a registered Git Repo") if !File.directory? source_dir 
       system "rm -rf #{source_dir}"
     end
-    def remove_source(name)
+    def remove_sources(name)
      # delete_source()
       get_sources_config.delete(name.to_sym)
       @cfg.set_json()

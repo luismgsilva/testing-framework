@@ -6,14 +6,13 @@ module Git_Manager
     def initialize
       #@internal_repo = 'https://github.com/luiss-synopsys/test.git'
     end
-
     def set_git(git_info)
       @repo = git_info[:repo]
       @branch = git_info[:branch]
       @name = get_repo_name(@repo)
       @path_to_clone = "#{$PWD}/sources/#{@name}"
     end
-
+    
     def valid_repo(repo)
       return system "git ls-remote #{repo} > /dev/null 2>&1"
     end
@@ -51,6 +50,28 @@ module Git_Manager
   
     #tmp
 
+    def search_log(key, value)
+      my_lambda = -> (iterate) { 
+        iterate.each_pair do |k, v|
+          return my_lambda.call (v) if v.class == Hash
+          if k == key
+            return true if v =~ /#{value}/
+          end
+        end
+        return false
+      }
+      ch_dir = "cd #{$FRAMEWORK}"
+      branch = `#{ch_dir} ; git branch --show-current`
+      `#{ch_dir} ; git rev-list #{branch}`.split.each do |hash|
+        begin 
+          json = JSON.parse(`#{ch_dir} ; git log -n 1 --pretty=format:%s #{hash}`)
+        rescue => a
+          next
+        end
+        system "#{ch_dir} ; git log #{hash} -n 1" if my_lambda.call(json)
+      end
+    end
+=begin
     def search_log(params)
       to_execute = "log --all " 
       params.each do |param|
@@ -60,7 +81,7 @@ module Git_Manager
       to_execute += " --all-match"
       internal_git(to_execute)
     end
-
+=end
 
     def create_env()
       puts <<-EOF
@@ -93,9 +114,8 @@ module Git_Manager
       "/scratch/luiss/tmp/#{i}"
     end
 
-    def create_worktree(arr, dir1, dir2)
-      baseline = arr[0]
-      reference = (arr[1].nil?) ? "HEAD" : arr[1]
+    def create_worktree(baseline, reference, dir1, dir2)
+      reference = "HEAD" if reference.nil?
 
       internal_git("worktree add #{dir1} #{baseline} > /dev/null 2>&1")
       internal_git("worktree add #{dir2} #{reference} > /dev/null 2>&1")
@@ -106,20 +126,21 @@ module Git_Manager
       internal_git("worktree remove #{dir2}")
     end
 
-    def get_clone()
+
+
+    def get_clone()#repo, path_to_clone, branch = nil)
 
       return if File.directory? (@path_to_clone)
       
       git = "git clone " + ((@branch.nil?) ? "" : "--branch #{@branch}") + " #{@repo} #{@path_to_clone}"
 
-      #git = "git clone --branch #{@branch} #{@repo} #{@path_to_clone}"
       puts "Cloning into '#{@path_to_clone}'..."
       
-      system (git)
-      exit
-      if !system("#{git} > /dev/null 2>&1")
-        puts "ERROR: Something went wrong." ; exit
-      end
+     # system (git)
+     # return
+     # if !system("#{git} > /dev/null 2>&1")
+        abort("ERROR: Something went wrong.") if !system("#{git} > /dev/null 2>&1")
+     # end
     end
 
     def if_already_exists(path_to_clone)

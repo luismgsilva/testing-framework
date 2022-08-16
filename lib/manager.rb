@@ -33,14 +33,34 @@ module Manager
     end
     def clean()
       @dir_manager.clean_tasks_folder()
-    end 
+    end
 
-    def compare(arr, isJSON)
+    def hard_reset(pass)
+      dirs = ["#{$PWD}/build", 
+              @cfg.config[:params][:PREFIX],
+              @cfg.config[:params][:MOD_PREFIX],
+              "#{$PWD}/sources",
+              "#{$PWD}/#{$FRAMEWORK}/tasks",
+              "#{$PWD}/#{$FRAMEWORK}/logs"
+      ]
+      loop {
+        input = -> { puts "Deleting: #{dirs}\nContinue? (y/n)" ; $stdin.gets.chomp }.call
+        break if %w[y yes].any? input
+        abort("Exited by User") if %w[n no].any? input
+      } if pass.nil?
+
+      dirs.each do |dir| 
+        system "rm -rf #{dir}"
+      end
+
+    end  
+
+    def compare(baseline, reference, isJSON)
       
       compare = Compare::Compare.new
      
       dir1, dir2 = @dir_manager.get_compare_dir()
-      @git_manager.create_worktree(arr, dir1, dir2)
+      @git_manager.create_worktree(baseline, reference, dir1, dir2)
       
       dir1 += "/tasks"
       dir2 += "/tasks"
@@ -66,8 +86,8 @@ module Manager
       @git_manager.remove_worktree(dir1, dir2)    
     end
 
-    def search_log(params)
-      @git_manager.search_log(params)
+    def search_log(key, value)
+      @git_manager.search_log(key, value)
     end
 
     def publish()
@@ -100,7 +120,7 @@ module Manager
     end
 
     def internal_git(command)
-      @git_manager.internal_git(command)
+      @git_manager.internal_git(command.join(" "))
     end 
     
     def status()  
@@ -111,6 +131,28 @@ module Manager
       @var_manager.var_list(@cfg)
     end
     
+    def add_sources(name, gitrepo, branch)
+      @source.add_sources(name, gitrepo, branch)
+    end  
+    def get_sources(name = nil)
+      @source.get_sources(name)
+    end
+    def delete_sources(name)
+      @source.delete_sources(name)
+    end
+    def remove_sources(name)
+      @source.remove_sources(name)
+    end
+    def list_sources()
+      @source.list_sources()
+    end
+    def show_sources()
+      @source.show_sources()
+    end
+    def pull_sources(name)
+      @source.pull_sources(name)
+    end
+=begin
     def sources_mg(commands)
 
       case commands[0]
@@ -135,7 +177,7 @@ module Manager
         puts "ERROR: Invalid Source Option"
       end
     end
-
+=end
 
     def log(name_version, isTail)
       path_from = "#{$PWD}/#{$FRAMEWORK}/logs/#{name_version}.log"
@@ -150,15 +192,13 @@ module Manager
       Build::Build.new(@cfg, @git_manager, @dir_manager, @var_manager, @status_manager, filter)
     end
 
-    def set(str)
-      command = str.split('=').first
-      path = str.split('=').last
+    def set(var, value)
     
-      abort("ERROR: not a editable variable") if command =~/[\@]/
-      abort("ERROR: #{command} not a variable") if !@var_manager.verify_if_var_exists(@cfg.config, command)
+      abort("ERROR: not a editable variable") if var =~/[\@]/
+      abort("ERROR: #{var} not a variable") if !@var_manager.verify_if_var_exists(@cfg.config, var)
     
       params = @cfg.config[:params]
-      params.store(command.to_sym, "#{path}")
+      params.store(var.to_sym, value)
       @cfg.config.store(:params, params)
     
       @cfg.set_json()

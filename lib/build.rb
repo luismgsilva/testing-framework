@@ -11,7 +11,7 @@ module Build
         end
   
         def filter_task(data, to_filter)
-            return data if to_filter.empty?
+          return data if to_filter.nil?
             
             to_filter.map! { |x| x.to_sym } 
             to_filter.each { |filter| abort ("ERROR: Option Invalid #{filter}") if !data.include? filter }
@@ -29,7 +29,6 @@ module Build
           to_execute = @var_manager.prepare_data(command[:pre_condition], params)
           
           out = File.open("#{path_log}/#{task}.log", "w")
-          
           to_execute = [to_execute] if to_execute.class == String
           to_execute.each do |execute|
             status = system("echo Executing: #{execute} ; #{execute}", out: out, err: out)
