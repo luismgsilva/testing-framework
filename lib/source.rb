@@ -15,13 +15,20 @@ module Source
     end
 
     def get_sources(name = nil)
-      if name.nil?
-        get_sources_config.each_pair do |k, v|
-          @git_manager.set_git(v) 
-          @git_manager.get_clone
-        end
+      to_each = nil
+      if !name.nil? 
+        name.map! &:to_sym
+        config = get_sources_config
+        name.each { |n| abort ("ERROR: #{n} not registered Git Repo") if !config.include? n }
+        to_each = get_sources_config.delete_if { |cfg| !name.include? cfg }
+      elsif name.nil?
+        to_each = get_sources_config
       end
-        exit
+      to_each.each_pair do |k, v|
+        @git_manager.set_git(v) 
+        @git_manager.get_clone
+      end
+      exit
       abort("ERROR: '#{name}' not a registered Git Repo") if !name.nil? and !exists_repo(name) 
       @git_manager.set_git(get_sources_config[name.to_sym]) 
       @git_manager.get_clone 
