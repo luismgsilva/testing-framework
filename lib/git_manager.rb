@@ -50,6 +50,44 @@ module Git_Manager
   
     #tmp
 
+
+    def search_log(key, value)
+      my_lambda = -> (iterate) {
+        iterate.each_pair do |k, v|
+          return my_lambda.call (v) if v.class == Hash
+          if k == key
+            return true if v =~ /#{value}/
+          end
+        end
+        return false
+      }
+
+      ch_dir = "cd #{$FRAMEWORK}"
+      branch = `#{ch_dir} ; git branch --show-current`
+      `#{ch_dir} ; git rev-list #{branch}`.split.each do |hash|
+          header_message = `#{ch_dir} ; git log -n 1 --pretty=format:%s #{hash}`
+          
+          find_commit = "#{ch_dir} ; git log #{hash} -n 1"
+          if is_valid_json(header_message)
+            json = JSON.parse(header_message)
+            system(find_commit) if my_lambda.call(json)
+          else
+            system find_commit if header_message =~ /#{value}/
+          end
+      end
+    end
+
+    def is_valid_json(message)
+      begin 
+        JSON.parse(message)
+        return true
+      rescue JSON::ParserError => e
+        return false
+      else 
+        abort("debug")
+      end
+    end   
+=begin
     def search_log(key, value)
       my_lambda = -> (iterate) { 
         iterate.each_pair do |k, v|
@@ -71,18 +109,7 @@ module Git_Manager
         system "#{ch_dir} ; git log #{hash} -n 1" if my_lambda.call(json)
       end
     end
-=begin
-    def search_log(params)
-      to_execute = "log --all " 
-      params.each do |param|
-        param = param.split("=")
-        to_execute += %{ --grep='"#{param[0]}": "#{param[1]}"'}
-      end
-      to_execute += " --all-match"
-      internal_git(to_execute)
-    end
 =end
-
     def create_env()
       puts <<-EOF
       Must initialize Git Repo: bla git init
