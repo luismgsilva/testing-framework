@@ -42,7 +42,7 @@ class Main
     opt.default do
       puts <<-EOF
 
-      {} Opcional Argument
+      {} Optional Argument
       <> Mandatory Argument
       $<> Mandatory with possibility to multiple Arguments
 
