@@ -123,8 +123,12 @@ module Manager
       @git_manager.internal_git(command.join(" "))
     end 
     
+    def diff(hash1, hash2)
+      @git_manager.diff(hash1, hash2)
+    end
+
     def status()  
-      abort("ERROR: Nothing built yet") if !system "cat #{@status_manager.path_to_status}"
+      abort("ERROR: Nothing executed yet") if !system "cat #{@status_manager.path_to_status} 2> /dev/null"
     end
   
     def var_list()
@@ -134,6 +138,9 @@ module Manager
     def add_sources(name, gitrepo, branch)
       @source.add_sources(name, gitrepo, branch)
     end  
+    def edit_sources(name, key, value)
+      @source.edit_sources(name, key, value)
+    end
     def get_sources(name = nil)
       @source.get_sources(name)
     end

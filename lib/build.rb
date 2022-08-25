@@ -11,7 +11,7 @@ module Build
         end
   
         def filter_task(data, to_filter)
-          return data if to_filter.nil?
+            return data if to_filter.nil?
             
             to_filter.map! { |x| x.to_sym } 
             to_filter.each { |filter| abort ("ERROR: Option Invalid #{filter}") if !data.include? filter }
@@ -58,8 +58,8 @@ module Build
             filter_task(data, to_filter)
             pre_condition(data, params, log_path)
             data.each do |task, command|
-                prefix_path_to_store = "#{prefix}/#{task}" 
-                params.store(:PREFIX, prefix_path_to_store) if !prefix.nil?
+                #prefix_path_to_store = "#{prefix}/#{task}" 
+                #params.store(:PREFIX, prefix_path_to_store) if !prefix.nil?
                 
                 @git_manager.set_git(command[:git]) if !command[:git].nil? ##
         

@@ -111,6 +111,8 @@ module Git_Manager
     end
 =end
     def create_env()
+    
+      # alterar para o interface class
       puts <<-EOF
       Must initialize Git Repo: bla git init
       Must set up Git Repo: bla git remote add origin [REPOSITIORY]
@@ -119,8 +121,20 @@ module Git_Manager
       exit 1
 
     end
-    
+   
+    def input_print(str)
+      puts str
+      input = $stdin.gets.chomp
+    end
     def internal_git(command)
+      
+      if command =~ /commit/
+        loop {
+          input = input_print("WARNING: This instruction may result in internal conflicts with the commit messages.\nDo you wish to continue? (y/n)")
+          break if %w[y yes].any? input
+          abort("Process terminated by User.") if %w[n no].any? input
+        }
+      end 
       to_execute = "cd #{$PWD}/#{$FRAMEWORK} ; git #{command}"
       result = executing(to_execute)
      # result = system "cd #{$PWD}/#{$FRAMEWORK} ; 
@@ -159,14 +173,17 @@ module Git_Manager
 
       return if File.directory? (@path_to_clone)
       
-      git = "git clone " + ((@branch.nil?) ? "" : "--branch #{@branch}") + " #{@repo} #{@path_to_clone}"
+     # git = "git clone " + ((@branch.nil?) ? "" : "--branch #{@branch}") + " #{@repo} #{@path_to_clone}"
+     
+      is_branch = (@branch.nil?) ? "" : "--branch #{@branch}"
+      git = "git clone #{is_branch} #{@repo} #{@path_to_clone}"
 
       puts "Cloning into '#{@path_to_clone}'..."
-      
-     # system (git)
+      puts git
+      system (git)
      # return
      # if !system("#{git} > /dev/null 2>&1")
-        abort("ERROR: Something went wrong.") if !system("#{git} > /dev/null 2>&1")
+       # abort("ERROR: Something went wrong.") if !system("#{git} > /dev/null 2>&1")
      # end
     end
 
@@ -180,6 +197,13 @@ module Git_Manager
       executing "cd #{repo_dir} ;
               git reset --hard ;
               git pull --force"
+    end
+
+    def diff(hash1, hash2)
+      hash2 = "HEAD" if hash2.nil?
+      to_execute = "cd #{$PWD}/#{$FRAMEWORK} ; diff -w <(git rev-list --max-count=1 --format=%B #{hash1}) <(git rev-list --max-count=1 --format=%B #{hash2})"
+      executing(to_execute)
+
     end
 
 =begin

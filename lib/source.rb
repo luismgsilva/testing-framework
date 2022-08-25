@@ -24,6 +24,7 @@ module Source
       elsif name.nil?
         to_each = get_sources_config
       end
+      abort("ERROR: Nothing to clone. Try adding a new Source") if to_each.empty?
       to_each.each_pair do |k, v|
         @git_manager.set_git(v) 
         @git_manager.get_clone
@@ -33,12 +34,30 @@ module Source
       @git_manager.set_git(get_sources_config[name.to_sym]) 
       @git_manager.get_clone 
     end
+    
+    def edit_sources(name, key, value)
+      if_source_not_exists(name)
+      config = get_sources_config[name.to_sym]
+      abort("ERROR: Key does not exist") if !config.has_key? key
+      config[key.to_sym] = value
+      @cfg.set_json() 
+    end
+    
+    def if_source_exists(name)
+      abort("ERROR: Source already exsits in system") if get_sources_config.has_key? name.to_sym
+    end
+    
+    def if_source_not_exists(name)
+      abort("ERROR: Source does not exist in system") if !get_sources_config.has_key? name.to_sym
+    end
 
     def add_sources(name, repo, branch = nil)
       abort("ERROR: Git Repo not valid") if !@git_manager.valid_repo(repo)  
+      if_source_exists(name)
       tmp = {}
       tmp.store(:repo, repo)
-      tmp.store(:branch, branch) if !branch.nil?
+      branch = branch.nil? ? "" : branch
+      tmp.store(:branch, branch)
       get_sources_config.store(name, tmp)
       @cfg.set_json()
     end
