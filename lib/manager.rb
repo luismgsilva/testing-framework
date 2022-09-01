@@ -1,220 +1,128 @@
 require_relative './config.rb'
 require_relative './directory_manager.rb'
 require_relative './git_manager.rb'
-require_relative './status_manager.rb'
 require_relative './var_manager.rb'
 require_relative './build.rb'
 require_relative './compare.rb'
 require_relative './source.rb'
+require_relative './helpers.rb'
 require 'json'
 require 'erb'
-require 'git'
-module Manager
-  
-  $PWD = Dir.getwd
-  $FRAMEWORK = ".bsf"
-  
-  class Manager
-    def initialize(config_file = nil)
-      @var_manager = Var_Manager::Var_Manager.new()
-      @git_manager = Git_Manager::Git_Manager.new()
-      @dir_manager = Directory_Manager::Directory_Manager.new
-      @status_manager = Status_Manager::Status_Manager.new()
-      @cfg = Config::Config.new(config_file, @var_manager, @dir_manager)
-      
-      @source = Source::Source.new(@git_manager, @cfg)
-    end
-    
-    def save_config(dir_to)
-      @cfg.save_config(dir_to)
-    end    
-    def clone(repo)
-      @git_manager.get_clone_framework(repo)
-    end
-    def clean()
-      @dir_manager.clean_tasks_folder()
-    end
 
-    def hard_reset(pass)
-      dirs = ["#{$PWD}/build", 
-              @cfg.config[:params][:PREFIX],
-              @cfg.config[:params][:MOD_PREFIX],
-              "#{$PWD}/sources",
-              "#{$PWD}/#{$FRAMEWORK}/tasks",
-              "#{$PWD}/#{$FRAMEWORK}/logs"
-      ]
-      loop {
-        input = -> { puts "Deleting: #{dirs}\nContinue? (y/n)" ; $stdin.gets.chomp }.call
-        break if %w[y yes].any? input
-        abort("Exited by User") if %w[n no].any? input
-      } if pass.nil?
+$PWD = Dir.getwd
 
-      dirs.each do |dir| 
-        system "rm -rf #{dir}"
-      end
+class Manager
 
-    end  
+  @@instance = nil
 
-    def compare(baseline, reference, isJSON)
-      
-      compare = Compare::Compare.new
-     
-      dir1, dir2 = @dir_manager.get_compare_dir()
-      @git_manager.create_worktree(baseline, reference, dir1, dir2)
-      
-      dir1 += "/tasks"
-      dir2 += "/tasks"
-      tasks = (Dir.children(dir1) & Dir.children(dir2)).select { |d| d =~ /_tests/ }
-      
-      to_execute_commands = {}
-      params = @cfg.config[:params]
-      tasks.each do |task|
-        @cfg.set_params_dependencies(params, task, "#{dir1}/#{task}", "#{dir2}/#{task}")
-
-        data_to_prepare = @cfg.config[:builder][:tasks][task.to_sym][:comparator]
-        to_execute = @var_manager.prepare_data(data_to_prepare, params)       
-        to_execute_commands.store(task, to_execute)
-      end
-
-      if !isJSON
-        compare.main(dir1, dir2, to_execute_commands)
-      else
-        to_execute_commands.each { |task, to_execute| puts "\n #{task}: \n " + `#{to_execute}` }
-      end
-      
-      dir1, dir2 = @dir_manager.get_compare_dir()
-      @git_manager.remove_worktree(dir1, dir2)    
-    end
-
-    def search_log(key, value)
-      @git_manager.search_log(key, value)
-    end
-
-    def publish()
-      source_dir = "#{$PWD}/#{$FRAMEWORK}/tasks"
-      
-      commit_msg_hash = {}
-      Dir.children(source_dir).sort.each do |task|
-       
-        to_execute = @cfg.config[:builder][:tasks][task.to_sym][:publish_header]
-        
-        params = @cfg.config[:params]
-        @cfg.set_params_dependencies(params, task)
-        to_execute = @var_manager.prepare_data(to_execute, params)
-        
-        place_holder = {}
-        get_commit_msg(to_execute, place_holder) { |command, config | 
-          abort("ERROR: Tools version not found") if !system command + "> /dev/null 2>&1"
-          commit_msg = JSON.parse(`#{command}`, symbolize_names: true)
-          place_holder.store(commit_msg[:build_name], commit_msg)
-        }
-
-        commit_msg_hash.store(task, place_holder)
-      end
-      @git_manager.publish(JSON.pretty_generate(commit_msg_hash))
-    end
-   
-    def get_commit_msg(to_execute, place_holder) 
-      return yield(to_execute, place_holder) if to_execute.class == String
-      to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
-    end
-
-    def internal_git(command)
-      @git_manager.internal_git(command.join(" "))
-    end 
-    
-    def diff(hash1, hash2)
-      @git_manager.diff(hash1, hash2)
-    end
-
-    def status()  
-      abort("ERROR: Nothing executed yet") if !system "cat #{@status_manager.path_to_status} 2> /dev/null"
-    end
-  
-    def var_list()
-      @var_manager.var_list(@cfg)
-    end
-    
-    def add_sources(name, gitrepo, branch)
-      @source.add_sources(name, gitrepo, branch)
-    end  
-    def edit_sources(name, key, value)
-      @source.edit_sources(name, key, value)
-    end
-    def get_sources(name = nil)
-      @source.get_sources(name)
-    end
-    def delete_sources(name)
-      @source.delete_sources(name)
-    end
-    def remove_sources(name)
-      @source.remove_sources(name)
-    end
-    def list_sources()
-      @source.list_sources()
-    end
-    def show_sources()
-      @source.show_sources()
-    end
-    def pull_sources(name)
-      @source.pull_sources(name)
-    end
-=begin
-    def sources_mg(commands)
-
-      case commands[0]
-      when /add/
-        @source.add_source(commands[1], commands[2])
-      when /get/
-        abort("badjoras") if commands[1].nil?
-        @source.get_source(commands[1])
-      when /delete/
-        @source.delete_source(commands[1])
-      when /remove/
-        @source.remove_source(commands[1])
-      when /list/
-        @source.list_sources()
-      when /show/
-        @source.show_sources()
-      when /pull/
-        @source.pull_sources(commands[1])
-      when /state/
-        @source.state_sources(commands[1])
-      else 
-        puts "ERROR: Invalid Source Option"
-      end
-    end
-=end
-
-    def log(name_version, isTail)
-      path_from = "#{$PWD}/#{$FRAMEWORK}/logs/#{name_version}.log"
-      abort("ERROR: Tool not found") if !system (isTail) ? "tail -f #{path_from}" : "cat #{path_from}"
-    end
-  
-    def repo_list()
-      @git_manager.get_repo_list()
-    end
-  
-    def build(filter = nil)
-      Build::Build.new(@cfg, @git_manager, @dir_manager, @var_manager, @status_manager, filter)
-    end
-
-    def set(var, value)
-    
-      abort("ERROR: not a editable variable") if var =~/[\@]/
-      abort("ERROR: #{var} not a variable") if !@var_manager.verify_if_var_exists(@cfg.config, var)
-    
-      params = @cfg.config[:params]
-      params.store(var.to_sym, value)
-      @cfg.config.store(:params, params)
-    
-      @cfg.set_json()
-    end
-  
-    def help()
-      puts <<-EOF
-      EOF
-    end
-  
+  def self.instance
+    @@instance = @@instance || Manager.new
+    return @@instance
   end
+  def initialize()
+  end
+
+  def save_config(dir_to)
+    Config.instance.save_config(dir_to)
+  end
+  def clone(repo)
+    GitManager.get_clone_framework(repo)
+  end
+  def clean(task)
+    DirManager.clean_tasks_folder(task)
+  end
+  def tasks_list()
+    puts Config.instance.tasks.keys
+  end
+  def compare(baseline, reference, isJSON)
+
+    dir1, dir2 = DirManager.get_compare_dir()
+    GitManager.create_worktree(baseline, reference, dir1, dir2)
+
+    dir1 += "/tasks"
+    dir2 += "/tasks"
+    tasks = DirManager.intersect_children_path(dir1, dir2)
+    to_execute_commands = {}
+    tasks.each do |task|
+      Helper.set_internal_vars(task)
+      VarManager.instance.set_internal("@BASELINE",  "#{dir1}/#{task}")
+      VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
+      data_to_prepare = Config.instance.comparator(task)
+      to_execute = VarManager.instance.prepare_data(data_to_prepare)
+      to_execute_commands.store(task, to_execute)
+    end
+    "d"
+    if !isJSON
+      Compare.instance.main(dir1, dir2, to_execute_commands)
+    else
+      to_execute_commands.each { |task, to_execute| puts "\n #{task}: \n " + `#{to_execute}` }
+    end
+
+    dir1, dir2 = DirManager.get_compare_dir()
+    GitManager.remove_worktree(dir1, dir2)
+  end
+
+  def publish()
+    persistent_ws = DirManager.get_persistent_ws_path
+    
+    commit_msg_hash = {}
+    Dir.children(persistent_ws).sort.each do |task|
+      
+      to_execute = Config.instance.publish_header(task)
+      
+      Helper.set_internal_vars(task)
+
+      to_execute = VarManager.instance.prepare_data(to_execute)
+      place_holder = {}
+      to_execute = [to_execute] if to_execute.class == String
+      to_execute.each do |execute|
+        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
+        commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
+        place_holder.store(commit_msg[:build_name], commit_msg)
+      end
+      
+      commit_msg_hash.store(task, place_holder)
+      puts commit_msg_hash
+    end
+    GitManager.publish(JSON.pretty_generate(commit_msg_hash))
+  end
+
+  def get_commit_msg(to_execute, place_holder)
+    return yield(to_execute, place_holder) if to_execute.class == String
+    to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
+  end
+
+  def internal_git(command)
+    GitManager.internal_git(command.join(" "))
+  end
+
+  def diff(hash1, hash2)
+    GitManager.diff(hash1, hash2)
+  end
+
+  def status()
+    begin
+      status = Helper.get_status
+      status.each_pair do |task, result|
+        puts "#{result ? "Passed" : "Failed"}: #{task}"
+      end
+    rescue Exception => e
+      abort("ERROR: Nothing executed yet") if e.message == "StatusFileDoesNotExists"
+    end
+  end
+
+  def log(task, isTail)
+    log_file = DirManager.get_log_file(task)
+    puts log_file
+    abort("ERROR: Tool not found") if !system (isTail) ? "tail -f #{log_file}" : "cat #{log_file}"
+  end
+
+  def repo_list()
+    GitManager.get_repo_list()
+  end
+
+  def build(filter = nil)
+    Build.build(filter)
+  end
+
 end

@@ -1,5 +1,5 @@
 module OptionParser
-  
+
   class OptionParser
     def initialize
       @conditions = {}
@@ -20,8 +20,8 @@ module OptionParser
       condition.split(" ").each do |c|
           count = 1
           # eg. c == "compare" ; args[i] == "compare"
-          i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i]) 
-  
+          i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i])
+
           if args[i] =~ /.=./ and c =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
               tmp1 = $1
               tmp2 = $2
@@ -29,7 +29,7 @@ module OptionParser
                 opts[tmp1] = $1
                 opts[tmp2] = $2
               end
-          
+
           elsif c =~ /^\$([{}<>A-Za-z0-9_]+)$/
             tmp = $1
 
@@ -45,10 +45,10 @@ module OptionParser
               opts[$1] = args[i..-1]
               isFinal = true
             end
-            
+
           elsif(c =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?)
             opts[$1] = args[i]
-          
+
           elsif (c =~ /^{([^}]+)}$/)
             tmp = $1
             if tmp =~ /^-([A-Za-z0-9_]+)$/
@@ -66,10 +66,10 @@ module OptionParser
           end
           i += count
       end
-  
+
       opts = nil if i < args.count and !isFinal
       opts.transform_keys!(&:to_sym) if !opts.nil?
-  
+
       return opts
     end
     # def self.match_condition(condition, args)
@@ -79,7 +79,7 @@ module OptionParser
     #   condition.split(" ").each do |c|
     #       count = 1
     #       # eg. c == "compare" ; args[i] == "compare"
-    #       i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i]) 
+    #       i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i])
     #       # eg. c == "PREFIX=path/to/prefix"
     #       if args[i] =~ /.=./ and c =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
     #           tmp1 = $1
@@ -89,7 +89,7 @@ module OptionParser
     #             opts[tmp2] = $2
     #           end
 
-    #       # Options 
+    #       # Options
     #       elsif(c =~ /^{([^}]+)}$/)
     #           tmp  = $1
     #           if tmp =~ /^-([^}]+)$/
@@ -98,15 +98,15 @@ module OptionParser
     #             else
     #               count = 0
     #             end
-              
+
     #           elsif tmp =~ /^\$<([A-Za-z0-9_]+)>$/ and !args[i].nil?
     #             opts[$1] = args[i..-1]
     #             isFinal = true
-              
+
     #           elsif tmp =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?
     #               opts[$1] = args[i]
     #           end
-            
+
     #       elsif c =~ /^\$<([A-Za-z0-9_]+)>$/ and !args[i].nil? #
     #         opts[$1] = args[i..-1]
     #         isFinal = true
@@ -133,8 +133,8 @@ module OptionParser
       @conditions.each_pair do |condition, action|
         opts = OptionParser.match_condition(condition, args)
         if(opts != nil)
-  	      ret = {action: action, opts: opts}
-  	      return ret
+          ret = {action: action, opts: opts}
+          return ret
         end
       end
       return nil

@@ -1,45 +1,62 @@
-#!/home/luiss/.rvm/wrappers/ruby-2.7.2@project/ruby 
+#!/usr/bin/env ruby
 require_relative './lib/option_parser.rb'
 require_relative './lib/manager.rb'
+require_relative './lib/helpers.rb'
 
 class Main
   def initialize
-    opt = OptionParser::OptionParser.new
-    option_parser_default_initializer(opt)
-    option_parser_conditions_initializer(opt)
+    args = ARGV.clone
+    Helper.check_environment(args)
+    Helper.lock_mg(:LOCK, args)
+
+    begin
+      opt = OptionParser::OptionParser.new
+      option_parser_default_initializer(opt)
+      option_parser_conditions_initializer(opt)
+      Helper.lock_mg(:UNLOCK, args)
+    rescue SignalException
+      Helper.lock_mg(:UNLOCK, args)
+    rescue Exception
+      Helper.lock_mg(:UNLOCK, args)
+    rescue Interrupt
+      Helper.lock_mg(:UNLOCK, args)
+    end
   end
+
   def option_parser_conditions_initializer(opt)
 
-    opt.condition("sources add <name> <gitrepo> {branch}") { |opts| Manager::Manager.new.add_sources(opts[:name], opts[:gitrepo], opts[:branch]) } 
-    opt.condition("sources edit <name> <key>=<value>") { |opts| Manager::Manager.new.edit_sources(opts[:name], opts[:key], opts[:value]) } 
-    opt.condition("sources get ${name}") { |opts| Manager::Manager.new.get_sources(opts[:name]) } 
-    opt.condition("sources remove <name>") { |opts| Manager::Manager.new.remove_sources(opts[:name]) } 
-    opt.condition("sources delete <name>") { |opts| Manager::Manager.new.delete_sources(opts[:name]) } 
-    opt.condition("sources list") { |opts| Manager::Manager.new.list_sources() } 
-    opt.condition("sources show") { |opts| Manager::Manager.new.show_sources() } 
-    opt.condition("sources pull {name}") { |opts| Manager::Manager.new.pull_sources(opts[:name]) } 
-    opt.condition("sources <name> git <gitcommand>") { |opts| Manager::Manager.git_sources(opts[:name], opts[:gitcommand]) } 
+    opt.condition("sources get ${name}")                    { |opts| Source.get_sources(opts[:name]) }
+    opt.condition("sources delete <name>")                  { |opts| Source.delete_sources(opts[:name]) }
+    opt.condition("sources list")                           { |opts| Source.list_sources() }
+    opt.condition("sources show")                           { |opts| Source.show_sources() }
+    opt.condition("sources pull {name}")                    { |opts| Source.pull_sources(opts[:name]) }
+    opt.condition("sources <name> git <gitcommand>")        { |opts| Source.git_sources(opts[:name], opts[:gitcommand]) }
 
-    opt.condition("init <folderpath>") { |opts| Manager::Manager.new(opts[:folderpath]) } 
-    opt.condition("execute ${task}") { |opts| Manager::Manager.new.build(opts[:task]) } 
-    opt.condition("log {-t} <task>") { |opts| Manager::Manager.new.log(opts[:task], opts[:t]) } 
-    opt.condition("help") { |opts|  } 
-    opt.condition("list") { |opts| Manager::Manager.new.var_list() } 
-    opt.condition("set <var>=<value>") { |opts| Manager::Manager.new.set(opts[:var], opts[:value]) } 
-    opt.condition("status") { |opts| Manager::Manager.new.status() } 
-    opt.condition("publish") { |opts| Manager::Manager.new.publish() } 
-    opt.condition("diff <hash1> {hash2}") { |opts| Manager::Manager.new.diff(opts[:hash1], opts[:hash2]) } 
-    opt.condition("clone <gitrepo>") { |opts| Manager::Manager.new.clone(opts[:gitrepo]) }
-    opt.condition("git $<gitcommand>") { |opts| Manager::Manager.new.internal_git(opts[:gitcommand]) }
-    opt.condition("save config <pathtosave>") { |opts| Manager::Manager.new.save_config(opts[:pathtosave]) } 
-    opt.condition("search <var>=<value>") { |opts| Manager::Manager.new.search_log(opts[:var], opts[:value]) } 
-    opt.condition("clean") { |opts| Manager::Manager.new.clean() } 
-    opt.condition("compare {-j} <hash1> {hash2}") { |opts| Manager::Manager.new.compare(opts[:hash1], opts[:hash2], opts[:j])  }
-    
-    opt.condition("hard reset {-y}") { |opts| Manager::Manager.new.hard_reset(opts[:y]) } 
+    opt.condition("saveconfig <pathtosave>")                { |opts| Config.save_config(opts[:pathtosave]) }
+    opt.condition("clone <gitrepo>")                        { |opts| Manager.instance.clone(opts[:gitrepo]) }
+   
+    opt.condition("init <folderpath>")                      { |opts| Config.init_bsf(opts[:folderpath]) }
+
+    opt.condition("vars")                                   { |opts| VarManager.instance.var_list() }
+    opt.condition("tasks")                                  { |opts| Manager.instance.tasks_list() }
+    opt.condition("set <var>=<value>")                      { |opts| VarManager.instance.set(opts[:var], opts[:value]); VarManager.instance.save }
+
+    opt.condition("execute ${task}")                        { |opts| Manager.instance.build(opts[:task]) }
+
+    opt.condition("publish")                                { |opts| Manager.instance.publish() }
+    opt.condition("diff <hash1> {hash2}")                   { |opts| Manager.instance.diff(opts[:hash1], opts[:hash2]) }
+    opt.condition("git $<gitcommand>")                      { |opts| GitManager.internal_git(opts[:gitcommand]) }
+    opt.condition("search <var>=<value>")                   { |opts| GitManager.search_log(opts[:var], opts[:value]) }
+    opt.condition("compare {-j} <hash1> {hash2}")           { |opts| Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:j])  }
+
+    opt.condition("log {-t} <task>")  { |opts| Manager.instance.log(opts[:task], opts[:t]) }
+    opt.condition("status")           { |opts| Manager.instance.status() }
+
+    opt.condition("clean <task>")            { |opts| Manager.instance.clean(opts[:task]) }
+
     opt.parse(ARGV)
   end
-  
+
   def option_parser_default_initializer(opt)
 
     opt.default do
@@ -48,25 +65,23 @@ class Main
     {} Optional Argument
     <> Mandatory Argument
     $ Possibility to multiple Arguments
-        
+
 Start a working Environment
     init <folderpath>                  Create a new Framework Environment or reinitialize an existing one
-    clone <gitrepo>                    Clone an existing Framework Environment 
-    
+    clone <gitrepo>                    Clone an existing Framework Environment
+
 Work with task/s
     execute ${task}                    Execute the task's execution instruction
     log {-t} <task>                    print or follow the task's log
     status                             Lists the status of all executed tasks
+    tasks                              Lists all tasks in system
 
 Work with Input Variables
-    set <var>=<value>                    Defines the value to the input variable
-    list           
+    set <var>=<value>                  Defines the value to the input variable
+    vars                               Lists all input variables
 
 Work with the Git Repositories
-    sources add <name> <gitrepo>       Add a new Git Source to the internal config file
-    sources edit <name> <key>=<value>       Edits an existint Git Source in the internal config file
     sources get ${name}                Clone a new Git Source to the system
-    sources remove <name>              Remove a Git Source from the internal config file
     sources delete <name>              Delete a Git Source from the system
     sources list                       List all the Git Sources in the system
     sources show                       Show all cloned the Git Sources
@@ -74,18 +89,18 @@ Work with the Git Repositories
 Work with Git
     git $<gitcommand>                  Execute internal git commands
     publish                            Adds and commits with a specific commit message to local git
-    search <var>=<value>               Searchs on git log's commit message 
+    search <var>=<value>               Searchs on git log's commit message
                                         (<var>=<value> for Hash)
                                         (.=<value> for String)
 
 Work with comparation
     compare {-j} <hash1> {hash2}       Compares tests from hash1 to hash2 (Or HEAD if hash2 not given)
+                                        -j flag prints JSON file only
 
 Extra commands
-    save config <pathtosave>           Saves internal config with dependencies to pathtosave
-    clean                              Cleans persistent folder (eg. tasks' tests)
-                                        -j flag prints JSON file only
-        
+    saveconfig <pathtosave>            Saves internal config with dependencies to pathtosave
+    clean <task>                       Cleans task's workspace and persistent_ws folders
+
         EOF
     end
 
@@ -106,8 +121,8 @@ Extra commands
       sources show                       Show all cloned the Git Repositories
 
       init <folderpath>                  Create a new Framework Environment or reinitialize an existing one
-      clone <gitrepo>                    Clone an existing Framework Environment 
-      execute ${task}                    Execute the task's 
+      clone <gitrepo>                    Clone an existing Framework Environment
+      execute ${task}                    Execute the task's
       log {-t} <task>                    print or follow the task's log
       help                               You know exactly what this does. Don't you? *wink*
       list                               Lists all the Input Variables in the system

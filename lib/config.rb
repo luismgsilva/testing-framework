@@ -1,63 +1,74 @@
-#!/usr/bin/env ruby
-module Config
+require_relative 'directory_manager.rb'
 
-  class Config
-    attr_accessor :config
+class Config
 
+  @@instance = nil
 
-    def initialize(config_source_path, var_manager, dir_manager)
-      
-      @var_manager = var_manager
-      @dir_manager = dir_manager
+  def self.get_json(file)
+  end 
+  def self.instance
+    @@instance = @@instance || Config.new
+    return @@instance
+  end
 
-      if !config_source_path.nil?
-        bla_config_source_path = @dir_manager.get_config_source_path()
-        abort("Path must contain config.json file") if !File.exists? "#{config_source_path}/config.json"
-        @dir_manager.create_dir(bla_config_source_path)
-        abort("ERROR: Something went wrong..") if !@dir_manager.copy_file("#{config_source_path}/*", bla_config_source_path)
-        
-        config_file = "#{config_source_path}/config.json" 
-        params = {}
-        config = {}
-        params.store(:@CONFIG_SOURCE_PATH, bla_config_source_path)
-        config_file = get_json(config_file)
-        config.store(:params, params)
-        config.store(:builder, config_file)
-       
-   #     var_manager.check_var_global(config[:builder])
-        set_json(config)
-      elsif File.directory? "#{@dir_manager.get_config_source_path}"
-        @config = get_json()
-      end
-    end
-   
-    def set_params_dependencies(params, task, dir1 = nil, dir2 = nil)
-      params.store(:@SOURCE, "#{$PWD}/sources")
-      params.store(:@BUILDNAME, task.to_s)
-      params.store(:@PERSISTENT_WS, "#{$PWD}/#{$FRAMEWORK}/tasks/#{task.to_s}")
-      params.store(:@WORKSPACE, "#{$PWD}/build/#{task}")
-      params.store(:@BASELINE, dir1) if !dir1.nil?
-      params.store(:@REFERENCE, dir2) if !dir2.nil?
-    end
+  def initialize
+    file = "#{DirManager.get_config_path}/config.json"
+    abort("Not a BSF directory") if !File.exists?(file)
+    @config = JSON.parse(File.read(file), symbolize_names: true)
+  end
 
-
-    def get_json(file = "#{@dir_manager.get_config_source_path}/config.json")
-      return JSON.parse(File.read(file), symbolize_names: true)
-    end 
-    
-   def save_config(dir_to)
-     tmp = @config[:builder]
-     puts tmp  
-     dir_from = @dir_manager.get_config_source_path()
-     @dir_manager.create_dir(dir_to)
-     @dir_manager.copy_folder(dir_from, dir_to)
-     File.write("#{dir_to}/config_source_path/config.json", JSON.pretty_generate(tmp))
-   end 
-
-    def set_json(config = @config)
-      path = @dir_manager.get_config_source_path
-      @dir_manager.create_dir(path)
-      File.write("#{path}/config.json", JSON.pretty_generate(config))
+  def self.init_bsf(config_source_path)
+    begin
+      internal_config_path = DirManager.get_config_path()
+      raise("PathMustContainConfigFileException") if !DirManager.file_exists("#{config_source_path}/config.json") 
+      raise("AlreadyBSFDirectory") if File.directory? DirManager.get_framework_path
+      raise("InvalidConfigFileException") if !valid_json("#{config_source_path}/config.json")
+      DirManager.create_dir(internal_config_path)
+      raise("CouldNotCopyFilesException") if !DirManager.copy_file("#{config_source_path}/*", internal_config_path)
+    rescue Exception => e
+      abort("ERROR: Already a BSF Directory") if e.message == "AlreadyBSFDirectory"
+      abort("ERROR: Invalid Config File") if e.message == "InvalidConfigFileException"
+      abort("ERROR: Path must contain config.json file") if e.message == "PathMustContainConfigFileException"
+      abort("ERROR: Could not copy Files") if e.message == "CouldNotCopyFilesException"
     end
   end
+  
+  def self.valid_json(file_path)
+    begin 
+      config = JSON.parse(File.read(file_path), symbolize_names: true)
+      return false if !config.has_key? :sources
+      return false if !config.has_key? :tasks
+      return true
+    rescue => e
+      puts e.message
+      return false
+    end
+  end
+
+  def self.save_config(dir_to)
+    dir_from = DirManager.get_config_path
+    DirManager.create_dir(dir_to)
+    DirManager.copy_folder(dir_from, dir_to)
+  end 
+
+  def required_variables
+    str = JSON.pretty_generate(@config)
+    exprex = /\$var\(([^)]+)\)/
+    return str.scan(exprex).flatten.uniq
+  end
+
+  def tasks
+    return @config[:tasks]
+  end
+  def publish_header(task)
+    return tasks[task.to_sym][:publish_header]
+  end
+  def comparator(task)
+    return tasks[task.to_sym][:comparator]
+  end 
+  def sources
+    return @config[:sources]
+  end
+
+  
 end

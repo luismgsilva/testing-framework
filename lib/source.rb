@@ -1,100 +1,81 @@
-module Source
-  class Source
-    
+class Source
 
-    def initialize(git_manager, cfg)
-      @git_manager = git_manager
-      @cfg = cfg
-     # puts JSON.pretty_generate @cfg.config
-     # exit
-     # @sources = @cfg.config[:builder][:sources]
-    end
-    
-    def get_sources_config()
-      return @cfg.config[:builder][:sources]
-    end
+  def self.get_sources_config()
+    return Config.instance.sources
+  end
 
-    def get_sources(name = nil)
+  def self.get_sources(name = nil)
+    begin
+      
       to_each = nil
       if !name.nil? 
         name.map! &:to_sym
         config = get_sources_config
-        name.each { |n| abort ("ERROR: #{n} not registered Git Repo") if !config.include? n }
+        name.each { |n| raise("NotRegisteredSourceException") if !config.include? n }
         to_each = get_sources_config.delete_if { |cfg| !name.include? cfg }
       elsif name.nil?
         to_each = get_sources_config
       end
-      abort("ERROR: Nothing to clone. Try adding a new Source") if to_each.empty?
+      
+      raise("NothingToCloneException") if to_each.empty?
+      
       to_each.each_pair do |k, v|
-        @git_manager.set_git(v) 
-        @git_manager.get_clone
+        opts = v
+        opts[:name] = k
+        GitManager.get_clone(opts)
       end
-      exit
-      abort("ERROR: '#{name}' not a registered Git Repo") if !name.nil? and !exists_repo(name) 
-      @git_manager.set_git(get_sources_config[name.to_sym]) 
-      @git_manager.get_clone 
+      
+      raise("NotRegisteredSourceExcetpion") if !name.nil? and !exists_repo(name) 
+      GitManager.instance.set_git(get_sources_config[name.to_sym]) 
+      GitManager.instance.get_clone 
+    rescue Exception => e
+      abort("ERROR: Nothing to clone.") if e.message == "NothingToCloneException" 
+      abort("ERROR: Not a registered Git Repo") if e.message == "NotRegisteredSourceException"
     end
-    
-    def edit_sources(name, key, value)
-      if_source_not_exists(name)
-      config = get_sources_config[name.to_sym]
-      abort("ERROR: Key does not exist") if !config.has_key? key
-      config[key.to_sym] = value
-      @cfg.set_json() 
-    end
-    
-    def if_source_exists(name)
-      abort("ERROR: Source already exsits in system") if get_sources_config.has_key? name.to_sym
-    end
-    
-    def if_source_not_exists(name)
-      abort("ERROR: Source does not exist in system") if !get_sources_config.has_key? name.to_sym
-    end
-
-    def add_sources(name, repo, branch = nil)
-      abort("ERROR: Git Repo not valid") if !@git_manager.valid_repo(repo)  
-      if_source_exists(name)
-      tmp = {}
-      tmp.store(:repo, repo)
-      branch = branch.nil? ? "" : branch
-      tmp.store(:branch, branch)
-      get_sources_config.store(name, tmp)
-      @cfg.set_json()
-    end
-
-    def delete_sources(name)
-      source_dir = "#{$PWD}/sources/#{name}"
-      abort("ERROR: '#{name}' not a registered Git Repo") if !File.directory? source_dir 
+  end 
+  def self.delete_sources(task)
+    begin
+      source_dir = DirManager.get_source_path(task)
+      raise "NotRegisteredSourceExceptiono" if !File.directory? source_dir 
       system "rm -rf #{source_dir}"
-    end
-    def remove_sources(name)
-     # delete_source()
-      get_sources_config.delete(name.to_sym)
-      @cfg.set_json()
-    end
-
-    def pull_sources(repo_name)
-      abort("ERROR: #{repo_name} not found in sources") if !Dir.children("#{$PWD}/sources").include? repo_name
-      @git_manager.to_hard_pull("#{$PWD}/sources/#{repo_name}")
-    end
-
-    def state_sources(repo_name)
-      abort("ERROR: #{repo_name} not found in sources") if !Dir.children("#{$PWD}/sources").include? repo_name
-      @git_manager.check_up_to_date(repo_name)
+    rescue Exception => e
+      abort("ERROR: Not a registered Source") if e.message == "NotRegisteredSourceException"
     end 
+  end
 
-    def list_sources()
-      get_sources_config.each do |source, tmp|
-        puts source 
-        tmp.each { |key, value| puts "   #{key}: #{value}" }
-      end
+  def self.pull_sources(source)
+    begin
+      raise("NotFoundInSourcesException") if !Dir.children(DirManager.get_sources_path).include? source
+      GitManager.instance.to_hard_pull(DirManager.get_source_path(source))
+    rescue Exception => e
+      abort("ERROR: #{source} not found in Sources") if e.message == "NotFoundInSourcesException"
     end
-    def show_sources()
-      abort("ERROR: No sources cloned yet") if !File.directory? "#{$PWD}/sources"
+  end
+
+  def self.state_sources(source)
+    begin
+      raise "NotFoundInSourcesException" if !Dir.children(DirManager.get_sources_path).include? source
+      GitManager.instance.check_up_to_date(source)
+    rescue Exception => e
+      abort("ERROR: #{repo_name} not found in sources") if e.message == "NotFoundInSourcesException"
+    end
+  end 
+
+  def self.list_sources()
+    get_sources_config.each do |source, tmp|
+      puts source 
+      tmp.each { |key, value| puts "   #{key}: #{value}" }
+    end
+  end
+  def self.show_sources()
+    begin
+      raise "NoSourcesClonedYetException" if !File.directory? DirManager.get_sources_path
       Dir.children("#{$PWD}/sources").sort.each { |source| puts source }
+    rescue Exception => e
+      abort("ERROR: No sources cloned yet") if e.message == "NoSourcesClonedYetException"
     end
-    def exists_repo(name)
-      return get_sources_config.has_key? name.to_sym
-    end
+  end
+  def self.exists_repo(name)
+    return get_sources_config.has_key? name.to_sym
   end
 end

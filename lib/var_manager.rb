@@ -1,64 +1,90 @@
-module Var_Manager
+class VarManager
 
-  class Var_Manager
-      def verify_if_var_exists(builder, command)
-          arr = get_var_variables(builder)
-          return arr.include? command
-      end
+  @@instance = nil
 
-      def var_list(cfg)
-        var_list = get_var_variables(cfg.config) 
-          params = cfg.config[:params].keys
-
-          params.map! { |p| p.to_s.upcase }            
-          var_list.select! { |p| p !~ /\@/ }
-
-          var_list.each do |e|
-            if ! params.include? (e)
-              puts "Input Variable #{e} not defined"
-            else
-              value = e.to_sym
-              hash = cfg.config[:params]
-              puts "Input Variable #{e} defined: #{hash[value]}"
-            end
-          end
-      end
-
-      def check_var_global(builder)
-          vars = get_var_variables(builder)
-
-          vars.select! { |a| a =~ /\@/ }
-          vars = get_global_var_matching(vars)
-
-          abort("ERROR: Internal Variable/s #{vars} not defined.") if !vars.empty?
-        end
-
-      def get_global_var_matching(vars)
-          arr = []
-          vars.each do |var|
-              tmp = var.gsub("@", "$").to_sym
-              arr.append(var) if !global_variables.include? (tmp)
-          end
-          return arr
-      end
-      
-      def get_var_variables(hash)
-          str = JSON.pretty_generate(hash)
-          exprex = /\$var\(([^)]+)\)/
-          return str.scan(exprex).flatten.uniq
-      end
-      
-      def prepare_data(hash, params)
-        str = JSON.pretty_generate(hash)
-        str = process_variables(str, params)
-        return JSON.parse(str, symbolize_names: true)
-      end
-
-      def process_variables(str, params)
-        return str.gsub(/\$var\(([A-Z0-9_@]+)\)/) do |m|
-          abort("Input variable not set #{$1}.") if params[$1.to_sym].nil?
-          params[$1.to_sym]
-        end
-      end 
+  def initialize
+    begin
+      @vars = JSON.parse(File.read(DirManager.get_vars_file))
+    rescue
+      @vars = JSON.parse("{}")
+    end
+    return self
   end
+  def self.instance
+    @@instance = @@instance || self.new
+    return @@instance
+  end
+
+  def internal_vars
+    [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS", "@WORKSPACE", "@BASELINE", "@REFERENCE", "@CONFIG_SOURCE_PATH" ]
+  end
+  def var_list()
+    var_list = Config.instance.required_variables
+
+    params = @vars.keys
+    internal_vars.each { |var| params.push(var) }
+
+    var_list.each do |var|
+      if(var =~ /^\@/)
+        if(!params.include?(var))
+          puts "Internal Variable #{var} is invalid"
+        end
+      else
+        if !params.include?(var)
+          puts "Input Variable #{var} not defined"
+        else
+          puts "Input Variable #{var} defined: #{@vars[var]}"
+        end
+      end
+    end
+  end
+
+  def get(varname)
+    @vars[varname]
+  end
+
+  def save
+    File.write(DirManager.get_vars_file, JSON.pretty_generate(@vars))
+  end
+
+  def set(var, value)
+    abort("ERROR: not a editable variable") if var =~/[\@]/
+    abort("ERROR: #{var} not a variable") unless Config.instance.required_variables.include?(var)
+
+    @vars[var] = value
+  end
+  def set_internal(var, value)
+    @vars[var] = value
+  end
+
+  #def check_var_global(builder)
+  #  vars.select! { |a| a =~ /\@/ }
+  #  vars = get_global_var_matching(vars)
+  #
+  #  abort("ERROR: Internal Variable/s #{vars} not defined.") if !vars.empty?
+  #end
+
+  #def get_global_var_matching(vars)
+  #    arr = []
+  #    vars.each do |var|
+  #        tmp = var.gsub("@", "$").to_sym
+  #        arr.append(var) if !global_variables.include? (tmp)
+  #    end
+  #    return arr
+  #end
+
+  def process_variables(str)
+    return str.gsub(/\$var\(([A-Z0-9_@]+)\)/) do |m|
+      var_name = $1
+      abort("Input variable not set #{$1}.") if @vars[var_name].nil?
+      @vars[var_name]
+    end
+  end
+
+  def prepare_data(hash)
+    str = JSON.pretty_generate(hash)
+    str = process_variables(str)
+    return JSON.parse(str)
+  end
+
 end
