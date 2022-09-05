@@ -23,12 +23,12 @@ class GitManager
   def self.publish(commit_msg)
     git_path = "#{DirManager.get_framework_path}/.git"
     create_env() if !DirManager.directory_exists(git_path)
-
+  
     to_execute = "cd #{DirManager.get_framework_path} ;
                   git add . ;
                   git commit -m '#{commit_msg}'"
 
-    executing("\n#{to_execute.squeeze(" ").strip}")
+    executing(to_execute)
 
   end
 
@@ -118,8 +118,8 @@ class GitManager
     is_branch = (branch.nil?) ? "" : "--branch #{branch}"
     to_execute = "git clone #{is_branch} #{repo} #{path_to_clone}"
 
-    puts "Cloning into '#{path_to_clone}'..."
-    puts to_execute
+#    puts "Cloning into '#{path_to_clone}'..."
+#    puts to_execute
     system (to_execute)
    # return
    # if !system("#{git} > /dev/null 2>&1")

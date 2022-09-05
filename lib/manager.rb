@@ -21,15 +21,22 @@ class Manager
   end
   def initialize()
   end
-
+  
   def save_config(dir_to)
     Config.instance.save_config(dir_to)
   end
   def clone(repo)
     GitManager.get_clone_framework(repo)
   end
-  def clean(task)
-    DirManager.clean_tasks_folder(task)
+  def clean(tasks = nil, skip_flag = nil)
+    tasks = Config.instance.tasks.keys if tasks.nil?
+    tasks = [tasks] if tasks.class == String
+    begin 
+      Helper.input_user("Are you sure you want to clean: [y/n]", tasks)  
+    rescue Exception => e
+      abort("Process terminated by User") if e.message == "ProcessTerminatedByUserException"
+    end
+    tasks.each { |task| DirManager.clean_tasks_folder(task) }
   end
   def tasks_list()
     puts Config.instance.tasks.keys
@@ -48,10 +55,11 @@ class Manager
       VarManager.instance.set_internal("@BASELINE",  "#{dir1}/#{task}")
       VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
       data_to_prepare = Config.instance.comparator(task)
+      next if data_to_prepare.empty?
+      next if data_to_prepare.nil?
       to_execute = VarManager.instance.prepare_data(data_to_prepare)
       to_execute_commands.store(task, to_execute)
     end
-    "d"
     if !isJSON
       Compare.instance.main(dir1, dir2, to_execute_commands)
     else
@@ -82,7 +90,7 @@ class Manager
       end
       
       commit_msg_hash.store(task, place_holder)
-      puts commit_msg_hash
+      #puts commit_msg_hash
     end
     GitManager.publish(JSON.pretty_generate(commit_msg_hash))
   end
@@ -121,8 +129,8 @@ class Manager
     GitManager.get_repo_list()
   end
 
-  def build(filter = nil)
-    Build.build(filter)
+  def build(filter = nil, skip_flag = nil)
+    Build.build(filter, skip_flag)
   end
 
 end

@@ -58,4 +58,14 @@ class Helper
     lock_file = DirManager.get_lock_file
     return system("rm -rf #{lock_file}") if File.exists? lock_file
   end
+
+  def self.input_user(msg, option = nil)
+    puts msg
+    puts option if !option.nil?
+    loop {
+      input = $stdin.gets.chomp
+      break if %w[y yes].any? input
+      raise "ProcessTerminatedByUserException" if %w[n no].any? input
+    }
+  end
 end

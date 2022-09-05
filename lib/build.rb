@@ -10,7 +10,7 @@ class Build
       data = data.delete_if { |d| !to_filter.include? d }
   end
 
-  def self.pre_condition(data)
+  def self.pre_condition(data, skip_flag)
     data_cloned = data.clone
     fails = {}
 
@@ -31,19 +31,25 @@ class Build
     data.each_pair { |task, command| puts "Passed Pre-Condition: #{task}" }
     fails.each { |task, command| puts "Failed Pre-Condition: #{task}\n\sInstruction: #{command}" }
     exit -1 if data.empty?
-    loop {
-      input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
-      break if %w[y yes].any? input
-      abort("Exited by User") if %w[n no].any? input
-    } if !fails.empty?
+    return if !skip_flag.nil?
+    begin
+      Helper.input_user("Contiue? [y/n]") if !fails.empty?
+    rescue Exception => e
+      abort("Process Terminated By User") if e.message == "ProcessTerminatedByUserException"
+    end
+#    loop {
+#      input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
+#      break if %w[y yes].any? input
+#      abort("Exited by User") if %w[n no].any? input
+#    } if !fails.empty?
   end
 
-  def self.build(to_filter)
+  def self.build(to_filter, skip_flag)
     data = Config.instance.tasks
     filter_task(data, to_filter)
     DirManager.create_dir(DirManager.get_logs_path)
 
-    pre_condition(data)
+    pre_condition(data, skip_flag)
     execute(data)
   end
 

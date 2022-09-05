@@ -55,7 +55,7 @@ module DirManager
     system "rm -rf #{path}" if File.directory? path
   end
   def self.clean_tasks_folder(task)
-    system "echo 'Clearing...' ;
+    system "echo 'Clearing #{task}..' ;
             rm -rf #{get_framework_path}/tasks/#{task} ;
             rm -rf #{get_build_path}/#{task}"
   end

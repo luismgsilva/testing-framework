@@ -41,18 +41,19 @@ class Main
     opt.condition("tasks")                                  { |opts| Manager.instance.tasks_list() }
     opt.condition("set <var>=<value>")                      { |opts| VarManager.instance.set(opts[:var], opts[:value]); VarManager.instance.save }
 
-    opt.condition("execute ${task}")                        { |opts| Manager.instance.build(opts[:task]) }
+    opt.condition("execute {-y} ${task}")                   { |opts| Manager.instance.build(opts[:task], opts[:y]) }
 
     opt.condition("publish")                                { |opts| Manager.instance.publish() }
     opt.condition("diff <hash1> {hash2}")                   { |opts| Manager.instance.diff(opts[:hash1], opts[:hash2]) }
     opt.condition("git $<gitcommand>")                      { |opts| GitManager.internal_git(opts[:gitcommand]) }
     opt.condition("search <var>=<value>")                   { |opts| GitManager.search_log(opts[:var], opts[:value]) }
+#    opt.condition("search ${<var>=<value>}")                   { |opts| puts opts[:hash] }
     opt.condition("compare {-j} <hash1> {hash2}")           { |opts| Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:j])  }
 
-    opt.condition("log {-t} <task>")  { |opts| Manager.instance.log(opts[:task], opts[:t]) }
-    opt.condition("status")           { |opts| Manager.instance.status() }
+    opt.condition("log {-f} <task>")                        { |opts| Manager.instance.log(opts[:task], opts[:f]) }
+    opt.condition("status")                                 { |opts| Manager.instance.status() }
 
-    opt.condition("clean <task>")            { |opts| Manager.instance.clean(opts[:task]) }
+    opt.condition("clean {-y} ${task}")                     { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
 
     opt.parse(ARGV)
   end
@@ -72,7 +73,7 @@ Start a working Environment
 
 Work with task/s
     execute ${task}                    Execute the task's execution instruction
-    log {-t} <task>                    print or follow the task's log
+    log {-f} <task>                    print or follow the task's log
     status                             Lists the status of all executed tasks
     tasks                              Lists all tasks in system
 
@@ -99,7 +100,7 @@ Work with comparation
 
 Extra commands
     saveconfig <pathtosave>            Saves internal config with dependencies to pathtosave
-    clean <task>                       Cleans task's workspace and persistent_ws folders
+    clean {-y} ${task}                 Cleans task's workspace and persistent_ws folders
 
         EOF
     end
