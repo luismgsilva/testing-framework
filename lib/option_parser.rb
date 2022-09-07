@@ -13,6 +13,16 @@ module OptionParser
       @default_action = action
     end
 
+    def self.equals_method(args)
+      config = {}
+      args.each do |arg|
+        if arg =~ /^([^}]+)=([^}]+)$/
+          config[$1] = $2
+        end
+      end
+      return config
+    end
+
     def self.match_condition(condition, args)
       opts = {}
       i = 0
@@ -28,12 +38,16 @@ module OptionParser
               if args[i] =~ (/^([^}]+)=([^}]+)$/)
                 opts[tmp1] = $1
                 opts[tmp2] = $2
+                isFinal = true
               end
 
-          elsif c =~ /^\$([{}<>A-Za-z0-9_]+)$/
+          elsif c =~ /^\$([{}<>=A-Za-z0-9_]+)$/
             tmp = $1
-
-            if tmp =~ /^<([A-Za-z0-9_]+)>$/
+            if args[i] =~ /.=./ and tmp =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
+              config = equals_method(args)
+              opts[:hash] = config
+              isFinal = true
+            elsif tmp =~ /^<([A-Za-z0-9_]+)>$/
               if !args[i].nil?
                 opts[$1] = args[i..-1]
                 isFinal = true
@@ -41,9 +55,16 @@ module OptionParser
                 opts = nil
                 break
               end
-            elsif tmp =~ /^{([A-Za-z0-9_]+)}$/ and !args[i].nil?
-              opts[$1] = args[i..-1]
-              isFinal = true
+            elsif tmp =~ /^{([<>=A-Za-z0-9_]+)}$/ and !args[i].nil?
+              tmp = $1
+              if args[i] =~ /.=./ and tmp =~ /^<([^}]+)>=<([^}]+)>$/
+                config = equals_method(args[i..-1])
+                opts[:hash] = config
+                isFinal = true
+              else
+                opts[tmp] = args[i..-1]
+                isFinal = true
+              end
             end
 
           elsif(c =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?)

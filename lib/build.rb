@@ -37,11 +37,6 @@ class Build
     rescue Exception => e
       abort("Process Terminated By User") if e.message == "ProcessTerminatedByUserException"
     end
-#    loop {
-#      input = -> { puts "Continue? (y/n)" ; $stdin.gets.chomp }.call
-#      break if %w[y yes].any? input
-#      abort("Exited by User") if %w[n no].any? input
-#    } if !fails.empty?
   end
 
   def self.build(to_filter, skip_flag)
@@ -56,7 +51,6 @@ class Build
   def self.execute(data)
     data.each do |task, command|
       Helper.set_internal_vars(task)
-#      DirManager.delete_build_dir(task) ##
 
       to_execute = VarManager.instance.prepare_data(command[:execute])
       workspace_dir = VarManager.instance.get("@WORKSPACE")
@@ -79,5 +73,4 @@ class Build
       Helper.set_status(status, task)
     end
   end
-
 end
