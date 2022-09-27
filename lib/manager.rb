@@ -32,7 +32,7 @@ class Manager
     tasks = Config.instance.tasks.keys if tasks.nil?
     tasks = [tasks] if tasks.class == String
     begin 
-      Helper.input_user("Are you sure you want to clean: [y/n]", tasks)  
+      Helper.input_user("Are you sure you want to clean: [y/n]", tasks) if skip_flag.nil?
     rescue Exception => e
       abort("Process terminated by User") if e.message == "ProcessTerminatedByUserException"
     end
@@ -41,8 +41,9 @@ class Manager
   def tasks_list()
     puts Config.instance.tasks.keys
   end
-  def compare(baseline, reference, isJSON)
+  def compare(baseline, reference, options, task)
 
+    options = options || ""
     dir1, dir2 = DirManager.get_compare_dir()
     GitManager.create_worktree(baseline, reference, dir1, dir2)
 
@@ -50,24 +51,38 @@ class Manager
     dir2 += "/tasks"
     tasks = DirManager.intersect_children_path(dir1, dir2)
     to_execute_commands = {}
-    tasks.each do |task|
-      Helper.set_internal_vars(task)
-      VarManager.instance.set_internal("@BASELINE",  "#{dir1}/#{task}")
-      VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
-      data_to_prepare = Config.instance.comparator(task)
-      next if data_to_prepare.empty?
-      next if data_to_prepare.nil?
-      to_execute = VarManager.instance.prepare_data(data_to_prepare)
-      to_execute_commands.store(task, to_execute)
-    end
-    if !isJSON
-      Compare.instance.main(dir1, dir2, to_execute_commands)
-    else
-      to_execute_commands.each { |task, to_execute| puts "\n #{task}: \n " + `#{to_execute}` }
-    end
 
+    #
+    Helper.set_internal_vars(task)
+    VarManager.instance.set_internal("@BASELINE", "#{dir1}/#{task}")
+    VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
+    VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
+    #data_to_prepare = Config.instance.comparator(task)
+    commands = Config.instance.comparator(task)
+    commands = [commands] if commands.class == String
+    commands.each do |data_to_prepare|
+      to_execute = VarManager.instance.prepare_data(data_to_prepare)
+      puts to_execute
+      system to_execute
+    end
     dir1, dir2 = DirManager.get_compare_dir()
     GitManager.remove_worktree(dir1, dir2)
+  end
+
+  def ls(task, commit_id)
+    tmp_dir = DirManager.get_worktree_dir()
+
+    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
+    system "ls #{tmp_dir}/tasks/#{task}"
+    GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
+  end
+
+  def cat(task, commit_id, file)
+    tmp_dir = DirManager.get_worktree_dir()
+
+    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
+    system("cat #{tmp_dir}/tasks/#{task}/#{file}")
+    GitManager.internal_git("worktree remove #{tmp_dir}")
   end
 
   def publish()
@@ -84,7 +99,8 @@ class Manager
       place_holder = {}
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
+#        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
+        abort("ERROR: Tools version not found") if !system execute
         commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
         place_holder.store(commit_msg[:build_name], commit_msg)
       end

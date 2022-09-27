@@ -27,13 +27,13 @@ module DirManager
     "#{get_framework_path}/tasks"
   end
   def self.get_logs_path
-    "#{get_framework_path}/logs"
+    "#{Dir.getwd}/.tmp"
   end
   def self.get_log_file(file)
     "#{get_logs_path}/#{file}.log"
   end
   def self.get_status_file
-    "#{get_framework_path}/logs/status.json"
+    "#{get_logs_path}/status.json"
   end
   def self.get_vars_file
     "#{get_config_path}/vars.json"
@@ -48,6 +48,7 @@ module DirManager
     system("cp -r #{dir_from} #{dir_to}")
   end
   def self.copy_file(file_from, file_to)
+    puts "aqui"
     system("cp #{file_from} #{file_to}")
   end
   def self.delete_build_dir(repo_name)
@@ -56,9 +57,16 @@ module DirManager
   end
   def self.clean_tasks_folder(task)
     system "echo 'Clearing #{task}..' ;
-            rm -rf #{get_framework_path}/tasks/#{task} ;
+            rm -rf #{get_persistent_ws_path}/#{task} ;
             rm -rf #{get_build_path}/#{task}"
   end
+
+  def self.get_worktree_dir()
+    dir = "#{Dir.getwd}/build/worktree"
+    create_dir(dir)
+    return dir
+  end
+
   def self.get_compare_dir()
     dir = "#{Dir.getwd}/build/compare/"
     create_dir(dir)

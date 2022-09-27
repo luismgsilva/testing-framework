@@ -59,12 +59,15 @@ class Build
       out = File.open(DirManager.get_log_file(task), "w")
       puts "Executing #{task}.."
 
+#      follow_log_file = "tail -f #{DirManager.get_log_file(task)}"
+#      system follow_log_file
+
       status = nil
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
         status = system "echo Execution instruction: #{execute} ;
-                        cd #{workspace_dir} ;
-                        #{execute}", out: out, err: out
+                         cd #{workspace_dir} ;
+                         #{execute}", out: out, err: out
         break if !status
       end
 

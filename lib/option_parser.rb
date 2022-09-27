@@ -74,7 +74,12 @@ module OptionParser
             tmp = $1
             if tmp =~ /^-([A-Za-z0-9_]+)$/
               if args[i] == tmp
-                opts[$1] = {}
+                if $1 == "o"
+                  opts[$1] = args[i+1]
+                  count += 1
+                else
+                  opts[$1] = {}
+                end
               else
                 count = 0
               end

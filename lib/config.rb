@@ -24,7 +24,7 @@ class Config
       raise("AlreadyBSFDirectory") if File.directory? DirManager.get_framework_path
       raise("InvalidConfigFileException") if !valid_json("#{config_source_path}/config.json")
       DirManager.create_dir(internal_config_path)
-      raise("CouldNotCopyFilesException") if !DirManager.copy_file("#{config_source_path}/*", internal_config_path)
+      raise("CouldNotCopyFilesException") if !DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
     rescue Exception => e
       abort("ERROR: Already a BSF Directory") if e.message == "AlreadyBSFDirectory"
       abort("ERROR: Invalid Config File") if e.message == "InvalidConfigFileException"
