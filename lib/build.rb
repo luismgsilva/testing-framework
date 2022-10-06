@@ -53,7 +53,8 @@ class Build
       Helper.set_internal_vars(task)
 
       to_execute = VarManager.instance.prepare_data(command[:execute])
-      workspace_dir = VarManager.instance.get("@WORKSPACE")
+      workspace_dir = "#{VarManager.instance.get("@WORKSPACE")}/#{task}"
+#      workspace_dir = VarManager.instance.get("@WORKSPACE")
       DirManager.create_dir(workspace_dir)
 
       out = File.open(DirManager.get_log_file(task), "w")
@@ -65,7 +66,7 @@ class Build
       status = nil
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-        status = system "echo Execution instruction: #{execute} ;
+        status = system "echo 'Execution instruction: #{execute}' ;
                          cd #{workspace_dir} ;
                          #{execute}", out: out, err: out
         break if !status

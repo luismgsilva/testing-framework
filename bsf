@@ -2,7 +2,7 @@
 require_relative './lib/option_parser.rb'
 require_relative './lib/manager.rb'
 require_relative './lib/helpers.rb'
-
+require_relative './lib/webserver.rb'
 class Main
   def initialize
     args = ARGV.clone
@@ -17,7 +17,7 @@ class Main
     rescue SignalException
       Helper.lock_mg(:UNLOCK, args)
     rescue Exception => e
-      puts e.message
+      puts e
       Helper.lock_mg(:UNLOCK, args)
     rescue Interrupt
       Helper.lock_mg(:UNLOCK, args)
@@ -39,7 +39,7 @@ class Main
     opt.condition("init <folderpath>")                      { |opts| Config.init_bsf(opts[:folderpath]) }
 
     opt.condition("vars")                                   { |opts| VarManager.instance.var_list() }
-    opt.condition("tasks")                                  { |opts| Manager.instance.tasks_list() }
+    opt.condition("tasks")                                  { |opts| puts Manager.instance.tasks_list() }
     opt.condition("set <var>=<value>")                      { |opts| VarManager.instance.set(opts[:var], opts[:value]); VarManager.instance.save }
 
     opt.condition("execute {-y} ${task}")                   { |opts| Manager.instance.build(opts[:task], opts[:y]) }
@@ -49,14 +49,21 @@ class Main
     opt.condition("git $<gitcommand>")                      { |opts| GitManager.internal_git(opts[:gitcommand]) }
 
     opt.condition("search $<var>=<value>")                  { |opts| GitManager.search_log(opts[:hash]) }
-    opt.condition("compare {-o} <task> <hash1> {hash2}")    { |opts| Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o], opts[:task])  }
 
-    opt.condition("log {-f} <task>")                        { |opts| Manager.instance.log(opts[:task], opts[:f]) }
-    opt.condition("status")                                 { |opts| Manager.instance.status() }
+    opt.condition("compare {-o} <task> <hash1> {hash2}")    { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o], opts[:task])  }
+
+    opt.condition("compare all {-o} <hash1> {hash2}")       { |opts| puts Manager.instance.compare_all(opts[:hash1], opts[:hash2], opts[:o])}
+
+    opt.condition("server ${options}")                      { |opts| WebServer.execute(opts[:options]) }
+
+    opt.condition("log {-f} <task> {hash}")                 { |opts| puts Manager.instance.log(opts[:task], opts[:hash], opts[:f]) }
+    opt.condition("status {hash} ")                         { |opts| puts Manager.instance.status(opts[:hash]) }
 
     opt.condition("clean {-y} ${task}")                     { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
-    opt.condition("ls <task> <commit_id>")                  { |opts| Manager.instance.ls(opts[:task], opts[:commit_id]) }
-    opt.condition("cat <task> <commit_id> <file>")          { |opts| Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
+    opt.condition("ls <task> <commit_id>")                  { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
+
+    opt.condition("cat <task> <commit_id> <file>")          { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
+
     opt.parse(ARGV)
   end
 

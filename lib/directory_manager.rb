@@ -27,13 +27,16 @@ module DirManager
     "#{get_framework_path}/tasks"
   end
   def self.get_logs_path
-    "#{Dir.getwd}/.tmp"
+    "#{get_framework_path}/logs"
   end
   def self.get_log_file(file)
     "#{get_logs_path}/#{file}.log"
   end
+  def self.get_log_file_hash(file)
+    "#{get_worktree_dir}/logs/#{file}.log"
+  end
   def self.get_status_file
-    "#{get_logs_path}/status.json"
+    "#{get_framework_path}/status.json"
   end
   def self.get_vars_file
     "#{get_config_path}/vars.json"

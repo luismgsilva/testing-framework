@@ -60,15 +60,19 @@ class Config
   def tasks
     return @config[:tasks]
   end
+  def task_description(task)
+    return tasks[task.to_sym][:description]
+  end
   def publish_header(task)
     return tasks[task.to_sym][:publish_header]
   end
   def comparator(task)
     return tasks[task.to_sym][:comparator]
+  end
+  def comparator_agregator()
+   return @config[:comparator_agregator]
   end 
   def sources
     return @config[:sources]
   end
-
-  
 end

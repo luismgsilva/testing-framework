@@ -3,7 +3,6 @@ require_relative './directory_manager.rb'
 require_relative './git_manager.rb'
 require_relative './var_manager.rb'
 require_relative './build.rb'
-require_relative './compare.rb'
 require_relative './source.rb'
 require_relative './helpers.rb'
 require 'json'
@@ -39,16 +38,66 @@ class Manager
     tasks.each { |task| DirManager.clean_tasks_folder(task) }
   end
   def tasks_list()
-    puts Config.instance.tasks.keys
+#    puts Config.instance.tasks.keys
+    to_print = ""
+    Config.instance.tasks.keys.each do |task|
+	to_print += "#{task}:\n    Description: #{Config.instance.task_description(task)}\n\n"
+    end
+    return to_print
   end
-  def compare(baseline, reference, options, task)
 
-    options = options || ""
+  def compare_all(baseline, reference, options)
+    opts = options || ""
     dir1, dir2 = DirManager.get_compare_dir()
-    GitManager.create_worktree(baseline, reference, dir1, dir2)
+    GitManager.create_worktree(baseline, dir1)
+    GitManager.create_worktree(reference, dir2) if !reference.nil?
+    dir2 = DirManager.get_framework_path if reference.nil?
 
     dir1 += "/tasks"
     dir2 += "/tasks"
+    tasks = DirManager.intersect_children_path(dir1, dir2)
+    to_execute_commands = {}
+    json_agregator = {}
+    tasks.each do |task|
+
+      Helper.set_internal_vars(task)
+      VarManager.instance.set_internal("@BASELINE", "#{dir1}/#{task}")
+      VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
+      VarManager.instance.set_internal("@OPTIONS", "-t json")
+
+      commands = Config.instance.comparator(task)
+      commands = [commands] if commands.class == String
+      commands.each do |data_to_prepare|
+        to_execute = VarManager.instance.prepare_data(data_to_prepare)
+        json_agregator.merge!(JSON.parse `#{to_execute}`)
+      end
+    end
+
+    VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
+    VarManager.instance.set_internal("@JSON_DEBUG", "'#{(JSON.pretty_generate json_agregator)}'") #
+    command = Config.instance.comparator_agregator()
+    to_execute = VarManager.instance.prepare_data(command)
+    tmp = `#{to_execute}`
+
+    dir1, dir2 = DirManager.get_compare_dir()
+    GitManager.remove_worktree(dir1)
+    GitManager.remove_worktree(dir2) if !reference.nil?
+    return tmp
+  end
+
+  def compare(baseline, reference, options, task)
+    tmp = ""
+    options = options || ""
+    dir1, dir2 = DirManager.get_compare_dir()
+#    GitManager.create_worktree(baseline, reference, dir1, dir2)
+
+    GitManager.create_worktree(baseline, dir1)
+    GitManager.create_worktree(reference, dir2) if !reference.nil?
+    dir2 = DirManager.get_framework_path if reference.nil?
+
+    dir1 += "/tasks"
+    dir2 += "/tasks"
+
     tasks = DirManager.intersect_children_path(dir1, dir2)
     to_execute_commands = {}
 
@@ -58,36 +107,45 @@ class Manager
     VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
     VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
     #data_to_prepare = Config.instance.comparator(task)
+
+
     commands = Config.instance.comparator(task)
     commands = [commands] if commands.class == String
     commands.each do |data_to_prepare|
       to_execute = VarManager.instance.prepare_data(data_to_prepare)
       puts to_execute
-      system to_execute
+      #system to_execute
+      tmp = `#{to_execute}`
     end
+
     dir1, dir2 = DirManager.get_compare_dir()
-    GitManager.remove_worktree(dir1, dir2)
+    GitManager.remove_worktree(dir1)
+    GitManager.remove_worktree(dir2) if !reference.nil?
+    return tmp
   end
 
   def ls(task, commit_id)
     tmp_dir = DirManager.get_worktree_dir()
+    to_print = ""
 
     GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
-    system "ls #{tmp_dir}/tasks/#{task}"
+    to_print = `ls #{tmp_dir}/tasks/#{task}`
     GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
+    return to_print
   end
 
   def cat(task, commit_id, file)
     tmp_dir = DirManager.get_worktree_dir()
-
+    to_print = ""
     GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
-    system("cat #{tmp_dir}/tasks/#{task}/#{file}")
+    to_print = `cat #{tmp_dir}/tasks/#{task}/#{file}`
     GitManager.internal_git("worktree remove #{tmp_dir}")
+    return to_print
   end
 
   def publish()
     persistent_ws = DirManager.get_persistent_ws_path
-    
+
     commit_msg_hash = {}
     Dir.children(persistent_ws).sort.each do |task|
       
@@ -102,7 +160,7 @@ class Manager
 #        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
         abort("ERROR: Tools version not found") if !system execute
         commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
-        place_holder.store(commit_msg[:build_name], commit_msg)
+        place_holder.merge!(commit_msg)
       end
       
       commit_msg_hash.store(task, place_holder)
@@ -111,10 +169,11 @@ class Manager
     GitManager.publish(JSON.pretty_generate(commit_msg_hash))
   end
 
-  def get_commit_msg(to_execute, place_holder)
-    return yield(to_execute, place_holder) if to_execute.class == String
-    to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
-  end
+# DEPRECATED
+#  def get_commit_msg(to_execute, place_holder)
+#    return yield(to_execute, place_holder) if to_execute.class == String
+#    to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
+#  end
 
   def internal_git(command)
     GitManager.internal_git(command.join(" "))
@@ -124,21 +183,46 @@ class Manager
     GitManager.diff(hash1, hash2)
   end
 
-  def status()
+  def status(commit_id)
+    p commit_id
+    to_print = ""
     begin
-      status = Helper.get_status
-      status.each_pair do |task, result|
-        puts "#{result ? "Passed" : "Failed"}: #{task}"
+      if !commit_id.nil?
+        worktree_dir = DirManager.get_worktree_dir()
+        GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
+        status = Helper.get_status("#{worktree_dir}/status.json")
+      else
+        status = Helper.get_status
       end
+      p status
+      status.each_pair { |task, result| to_print += "#{result ? "Passed" : "Failed"}: #{task}\n" }
+      GitManager.internal_git("worktree remove #{worktree_dir}") if !commit_id.nil?
     rescue Exception => e
       abort("ERROR: Nothing executed yet") if e.message == "StatusFileDoesNotExists"
     end
+    return to_print
   end
 
-  def log(task, isTail)
-    log_file = DirManager.get_log_file(task)
+  def log(task, commit_id, is_tail = nil)
+    to_print = ""
+    worktree_dir = ""
+    if !commit_id.nil?
+      worktree_dir = DirManager.get_worktree_dir()
+      GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
+      log_file = DirManager.get_log_file_hash(task)
+    else
+      log_file = DirManager.get_log_file(task)
+    end
     puts log_file
-    abort("ERROR: Tool not found") if !system (isTail) ? "tail -f #{log_file}" : "cat #{log_file}"
+
+    abort("ERROR: Tool not found") if !File.exists? log_file
+    if !is_tail.nil?
+      system "tail -f #{log_file}"
+    else
+      to_print = `cat #{log_file}`
+    end
+    GitManager.internal_git("worktree remove #{worktree_dir}") if !commit_id.nil?
+    return to_print
   end
 
   def repo_list()

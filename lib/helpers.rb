@@ -1,8 +1,9 @@
 class Helper
 
-  def self.get_status()
-    raise("StatusFileDoesNotExists") unless File.exists?(DirManager.get_status_file)
-    return JSON.parse(File.read(DirManager.get_status_file))
+  def self.get_status(status_path_file = DirManager.get_status_file)
+    p status_path_file
+    raise("StatusFileDoesNotExists") unless File.exists?(status_path_file)
+    return JSON.parse(File.read(status_path_file))
   end
   
   def self.set_status(result, task)
@@ -18,6 +19,7 @@ class Helper
 
   def self.set_internal_vars(task)
     VarManager.instance.set_internal("@SOURCE", "#{DirManager.pwd}/sources")
+    VarManager.instance.set_internal("@ROOT", "#{DirManager.pwd}")
     VarManager.instance.set_internal("@BUILDNAME", task.to_s)
     VarManager.instance.set_internal("@PERSISTENT_WS", "#{DirManager.get_persistent_ws_path}/#{task.to_s}")
     VarManager.instance.set_internal("@WORKSPACE", "#{DirManager.get_build_path}/#{task}")
@@ -48,9 +50,14 @@ class Helper
 
   def self.lock
     lock_file = DirManager.get_lock_file
-    raise "CouldNotGetLockException" if File.exists? lock_file
+
+    if File.exists? lock_file
+      raise "CouldNotGetLockException" if (`uptime -s` == `cat #{lock_file}`)
+      unlock()
+    end
+
     puts "DEBUG: LOCKING"
-    system "echo '' > #{lock_file}"
+    system "uptime -s > #{lock_file}"
   end
 
   def self.unlock

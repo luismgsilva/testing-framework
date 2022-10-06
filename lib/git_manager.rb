@@ -14,11 +14,6 @@ class GitManager
     return system to_execute
   end
 
-  def to_hard_pull(dir)
-    if !check_up_to_date(dir)
-      hard_pull(dir)
-    end
-  end
 
   def self.publish(commit_msg)
     git_path = "#{DirManager.get_framework_path}/.git"
@@ -98,16 +93,12 @@ class GitManager
     system "git clone " + ((branch.nil?) ? "" : " --branch #{branch} ") + " #{repo} #{DirManager.get_framework_path}"
   end
 
-  def self.create_worktree(baseline, reference, dir1, dir2)
-    reference = "HEAD" if reference.nil?
-
-    internal_git("worktree add #{dir1} #{baseline} > /dev/null 2>&1")
-    internal_git("worktree add #{dir2} #{reference} > /dev/null 2>&1")
+  def self.create_worktree(hash, dir)
+    internal_git("worktree add #{dir} #{hash} > /dev/null 2>&1")
   end
 
-  def self.remove_worktree(dir1, dir2)
-    internal_git("worktree remove #{dir1}")
-    internal_git("worktree remove #{dir2}")
+  def self.remove_worktree(dir)
+    internal_git("worktree remove #{dir} > /dev/null 2>&1")
   end
 
   def self.get_clone(opts)
