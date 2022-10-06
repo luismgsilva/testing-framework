@@ -53,10 +53,10 @@ class Build
       Helper.set_internal_vars(task)
 
       to_execute = VarManager.instance.prepare_data(command[:execute])
-      workspace_dir = "#{VarManager.instance.get("@WORKSPACE")}/#{task}"
-#      workspace_dir = VarManager.instance.get("@WORKSPACE")
+#      workspace_dir = "#{VarManager.instance.get("@WORKSPACE")}/#{task}"
+      workspace_dir = VarManager.instance.get("@WORKSPACE")
       DirManager.create_dir(workspace_dir)
-
+#      DirManager.create_dir($var.instance.get("@PERSISTENT_WS"))
       out = File.open(DirManager.get_log_file(task), "w")
       puts "Executing #{task}.."
 
