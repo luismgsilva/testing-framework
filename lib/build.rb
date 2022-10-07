@@ -56,12 +56,10 @@ class Build
 #      workspace_dir = "#{VarManager.instance.get("@WORKSPACE")}/#{task}"
       workspace_dir = VarManager.instance.get("@WORKSPACE")
       DirManager.create_dir(workspace_dir)
-#      DirManager.create_dir($var.instance.get("@PERSISTENT_WS"))
+      DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
+
       out = File.open(DirManager.get_log_file(task), "w")
       puts "Executing #{task}.."
-
-#      follow_log_file = "tail -f #{DirManager.get_log_file(task)}"
-#      system follow_log_file
 
       status = nil
       to_execute = [to_execute] if to_execute.class == String
@@ -75,6 +73,7 @@ class Build
       out.close()
 
       Helper.set_status(status, task)
+      Helper.set_previd(status, task)
     end
   end
 end

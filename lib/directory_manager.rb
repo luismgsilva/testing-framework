@@ -60,8 +60,9 @@ module DirManager
   end
   def self.clean_tasks_folder(task)
     system "echo 'Clearing #{task}..' ;
-            rm -rf #{get_persistent_ws_path}/#{task} ;
-            rm -rf #{get_build_path}/#{task}"
+            rm -rf #{get_build_path}/#{task} ;
+            rm -rf #{get_logs_path}/*"
+
   end
 
   def self.get_worktree_dir()

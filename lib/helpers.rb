@@ -5,13 +5,17 @@ class Helper
     raise("StatusFileDoesNotExists") unless File.exists?(status_path_file)
     return JSON.parse(File.read(status_path_file))
   end
+
+  def self.set_previd(status, task)
+    system "cd #{DirManager.get_persistent_ws_path}/#{task} ; git rev-parse HEAD > .previd"
+  end
   
   def self.set_status(result, task)
     data = "{}"
     file = DirManager.get_status_file
     data = File.read(file) if(File.exists?(file))
     status = JSON.parse(data)
-    status[task] = result
+    status[task] = result && 0 || 1
     DirManager.create_dir_for_file(file)
     File.write(file, JSON.pretty_generate(status))
     puts (result) ? "Passed" : "Failed"
