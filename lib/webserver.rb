@@ -14,8 +14,8 @@ class WebServer < Sinatra::Base
     
     end
    
-    get "/compare/:hash1/:hash2" do
-      Manager.instance.compare_all(params["hash1"], params["hash2"], "-t json")
+    get "/compare/:hash1/:hash2.:target" do
+      Manager.instance.compare(params["hash1"], params["hash2"], "-t #{params[:target]}")
       
     end
     
@@ -29,7 +29,12 @@ class WebServer < Sinatra::Base
     get "/log/:task/:hash" do
       Manager.instance.log(params[:task], params[:hash])
     end
-
+    get "/diff/:hash1/:hash2" do
+      Manager.instance.diff(params[:hash1], params[:hash2])
+    end
+    get "/search/:args" do
+      GitManager.search_log(params[:args])
+    end
     run!
   end
 end

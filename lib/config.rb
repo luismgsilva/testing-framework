@@ -25,9 +25,12 @@ class Config
       raise("InvalidConfigFileException") if !valid_json("#{config_source_path}/config.json")
       DirManager.create_dir(internal_config_path)
       raise("CouldNotCopyFilesException") if !DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
-      result = {}
-      Config.instance.tasks.keys.each { |task| result[task] = 9 } ## NEED TO MODIFIED THIS -------------------
-      File.write(DirManager.get_status_file, JSON.pretty_generate(result))
+      Helper.reset_status()
+#      result = {}
+#      Config.instance.tasks.keys.each { |task| result[task] = 9 } ## NEED TO MODIFIED THIS -------------------
+#      File.write(DirManager.get_status_file, JSON.pretty_generate(result))
+
+#      GitManager.internal_git("init")
     rescue Exception => e
       p e.message
       abort("ERROR: Already a BSF Directory") if e.message == "AlreadyBSFDirectory"

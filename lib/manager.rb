@@ -37,10 +37,7 @@ class Manager
       abort("Process terminated by User") if e.message == "ProcessTerminatedByUserException"
     end
     tasks.each { |task| DirManager.clean_tasks_folder(task) }
-
-    result = {}
-    tasks.each { |task| result[task] = 9 }
-    File.write(DirManager.get_status_file, JSON.pretty_generate(result))
+    Helper.reset_status()
   end
   def tasks_list()
 #    puts Config.instance.tasks.keys
@@ -51,68 +48,18 @@ class Manager
     return to_print
   end
 
-  def get_previous_commit_id(root)
+  def get_commit_data(root)
     commit_ids = `cd #{root} ; git rev-list --all`.split("\n").reverse
     current_commit_id = `cd #{root} ; git rev-parse HEAD`.chomp
     previous_commit_id = commit_ids[(commit_ids.find_index(current_commit_id) -1)]
+    return { "commit_ids" => commit_ids, "current_commit_id" => current_commit_id, "previous_commit_id" => previous_commit_id }
     return previous_commit_id
   end
-  def compare_all(baseline, reference, options)
 
-    opts = options || ""
-    dir1, dir2 = DirManager.get_compare_dir()
-    GitManager.create_worktree(baseline, dir1)
-    GitManager.create_worktree(reference, dir2) if !reference.nil?
-    dir2 = DirManager.get_framework_path if reference.nil?
-
-    dir1 += "/tasks"
-    dir2 += "/tasks"
-
-    previous_commit_id_1 = get_previous_commit_id(dir1)
-    previous_commit_id_2 = get_previous_commit_id(dir2)
-
-    p previous_commit_id_1
-    p previous_commit_id_2
-
-    tasks = DirManager.intersect_children_path(dir1, dir2)
-    to_execute_commands = {}
-    json_agregator = {}
-    tasks.each do |task|
-
-      Helper.set_internal_vars(task)
-      VarManager.instance.set_internal("@BASELINE", "#{dir1}/#{task}")
-      VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
-      VarManager.instance.set_internal("@OPTIONS", "-t json")
-
-      VarManager.instance.set_internal("@BASELINE", ".") if !(`cat #{VarManager.instance.get("@BASELINE")}/.previd`.chomp == previous_commit_id_1)
-      VarManager.instance.set_internal("@REFERENCE", ".") if !(`cat #{VarManager.instance.get("@REFERENCE")}/.previd`.chomp == previous_commit_id_2)
-
-      commands = Config.instance.comparator(task)
-      commands = [commands] if commands.class == String
-      commands.each do |data_to_prepare|
-        to_execute = VarManager.instance.prepare_data(data_to_prepare)
-	puts to_execute
-        json_agregator.merge!(JSON.parse `#{to_execute}`)
-      end
-    end
-
-    VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
-    VarManager.instance.set_internal("@JSON_DEBUG", "'#{(JSON.pretty_generate json_agregator)}'") #
-    command = Config.instance.comparator_agregator()
-    to_execute = VarManager.instance.prepare_data(command)
-    tmp = `#{to_execute}`
-
-    dir1, dir2 = DirManager.get_compare_dir()
-    GitManager.remove_worktree(dir1)
-    GitManager.remove_worktree(dir2) if !reference.nil?
-    return tmp
-  end
-
-  def compare(baseline, reference, options, task)
-    tmp = ""
+  def compare(baseline, reference, options, t = nil)
+    to_print = ""
     options = options || ""
     dir1, dir2 = DirManager.get_compare_dir()
-#    GitManager.create_worktree(baseline, reference, dir1, dir2)
 
     GitManager.create_worktree(baseline, dir1)
     GitManager.create_worktree(reference, dir2) if !reference.nil?
@@ -120,39 +67,81 @@ class Manager
     dir1 += "/tasks"
     dir2 += "/tasks"
 
-    previous_commit_id_1 = get_previous_commit_id(dir1)
-    previous_commit_id_2 = get_previous_commit_id(dir2)
+    commit_data1 = get_commit_data(dir1)
+    commit_data2 = get_commit_data(dir2)
 
-    tasks = DirManager.intersect_children_path(dir1, dir2)
+
+    json_agregator = {}
     to_execute_commands = {}
+    
+    is_agregator = t.nil?
 
-    p previous_commit_id_1
-    p previous_commit_id_2
-    #
-    Helper.set_internal_vars(task)
-    VarManager.instance.set_internal("@BASELINE", "#{dir1}/#{task}")
-    VarManager.instance.set_internal("@REFERENCE", "#{dir2}/#{task}")
-    VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
-    #data_to_prepare = Config.instance.comparator(task)
-
-    ##
-    VarManager.instance.set_internal("@BASELINE", ".") if !(`cat #{VarManager.instance.get("@BASELINE")}/.previd`.chomp == previous_commit_id_1)
-    VarManager.instance.set_internal("@REFERENCE", ".") if !(`cat #{VarManager.instance.get("@REFERENCE")}/.previd`.chomp == previous_commit_id_2)
-    ##
-    commands = Config.instance.comparator(task)
-    commands = [commands] if commands.class == String
-    commands.each do |data_to_prepare|
-      to_execute = VarManager.instance.prepare_data(data_to_prepare)
-      puts to_execute
-      #system to_execute
-      tmp = `#{to_execute}`
+    if is_agregator
+#        tasks = DirManager.intersect_children_path(dir1, dir2)
+#	tasks = (Dir.children(dir1) + Dir.children(dir2)).uniq
+        tasks = Config.instance.tasks.keys
+    else
+        tasks = [t]
     end
 
+    #DEBUG
+    tasks.delete(:hs_baremetal_qemu_vs_nsim)
+
+
+    tasks.each do |task|
+        Helper.set_internal_vars(task)
+
+        if File.exists?("#{dir1}/#{task}/.previd")
+          previd1 = File.read("#{dir1}/#{task}/.previd").chomp
+          if previd1 == 'first'
+            baseline_previd_exists = commit_data1["commit_ids"][0] == commit_data1["current_commit_id"]
+          else
+            baseline_previd_exists = File.read("#{dir1}/#{task}/.previd").chomp == commit_data1["previous_commit_id"]
+          end
+	else
+          baseline_previd_exists = false
+        end
+
+        if File.exists?("#{dir2}/#{task}/.previd")
+          previd2 = File.read("#{dir2}/#{task}/.previd").chomp
+          if previd2 == 'first'
+            reference_previd_exists = commit_data2["commit_ids"][0] == commit_data2["current_commit_id"]
+          else
+            reference_previd_exists = File.read("#{dir2}/#{task}/.previd").chomp == commit_data2["previous_commit_id"]
+          end
+	else
+	  baseline_previd_exists = false
+	end
+        VarManager.instance.set_internal("@BASELINE", (baseline_previd_exists) ? "#{dir1}/#{task}" : "")
+        VarManager.instance.set_internal("@REFERENCE", (reference_previd_exists) ? "#{dir2}/#{task}" : "")
+        VarManager.instance.set_internal("@OPTIONS", (is_agregator) ? "-t json" : options)
+        
+        commands = Config.instance.comparator(task)
+       #commands = [commands] if commands.class == String
+       #commands.each do |data_to_prepare|
+        # to_execute = VarManager.instance.prepare_data(data_to_prepare)
+          to_execute = VarManager.instance.prepare_data(commands)
+          #system to_execute
+          if is_agregator
+            json_agregator.merge!(JSON.parse(`#{to_execute}`))
+          else
+            to_print = `#{to_execute}` 
+          end
+        # end
+    end
+    if is_agregator
+        VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
+        VarManager.instance.set_internal("@JSON_DEBUG", "'#{(JSON.pretty_generate json_agregator)}'") #
+        command = Config.instance.comparator_agregator()
+        to_execute = VarManager.instance.prepare_data(command)
+        to_print = `#{to_execute}`
+    end
     dir1, dir2 = DirManager.get_compare_dir()
     GitManager.remove_worktree(dir1)
     GitManager.remove_worktree(dir2) if !reference.nil?
-    return tmp
+    return to_print
   end
+
 
   def ls(task, commit_id)
     tmp_dir = DirManager.get_worktree_dir()
@@ -190,8 +179,9 @@ class Manager
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
 #        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
-        abort("ERROR: Tools version not found") if !system execute
-        commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
+        abort("ERROR: #{execute}") if !system execute
+	tmp = `#{execute}`
+        commit_msg = JSON.parse(execute, symbolize_names: true) || execute
         place_holder.merge!(commit_msg)
       end
       
@@ -200,22 +190,17 @@ class Manager
     GitManager.publish(JSON.pretty_generate(commit_msg_hash))
   end
 
-# DEPRECATED
-#  def get_commit_msg(to_execute, place_holder)
-#    return yield(to_execute, place_holder) if to_execute.class == String
-#    to_execute.each { |command| yield(command, place_holder) } if to_execute.class == Array
-#  end
-
   def internal_git(command)
     GitManager.internal_git(command.join(" "))
   end
 
   def diff(hash1, hash2)
-    GitManager.diff(hash1, hash2)
+    hash1 = JSON.parse(`cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash1}`)
+    hash2 = JSON.parse(`cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash2}`)
+    return JSON.pretty_generate GitManager.diff(hash1, hash2)
   end
 
   def status(commit_id)
-    p commit_id
     to_print = ""
     mapping = {
       9 => "Not Executed",

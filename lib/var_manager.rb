@@ -16,7 +16,7 @@ class VarManager
   end
 
   def internal_vars
-    [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS", "@WORKSPACE", "@BASELINE", "@REFERENCE", "@CONFIG_SOURCE_PATH" ]
+    [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS", "@WORKSPACE", "@BASELINE", "@REFERENCE", "@CONFIG_SOURCE_PATH", "@OPTIONS", "@ROOT", "@JSON_DEBUG"]
   end
   def var_list()
     var_list = Config.instance.required_variables

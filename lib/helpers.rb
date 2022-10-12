@@ -1,13 +1,29 @@
 class Helper
 
   def self.get_status(status_path_file = DirManager.get_status_file)
-    p status_path_file
+#    p status_path_file
     raise("StatusFileDoesNotExists") unless File.exists?(status_path_file)
     return JSON.parse(File.read(status_path_file))
   end
-
+  def self.reset_status()
+    r = {}
+    Config.instance.tasks.keys.each { |task| r[task] = 9 }
+    File.write(DirManager.get_status_file, JSON.pretty_generate(r))
+  end
   def self.set_previd(status, task)
-    system "cd #{DirManager.get_persistent_ws_path}/#{task} ; git rev-parse HEAD > .previd"
+    path = "#{DirManager.get_persistent_ws_path}/#{task}"
+    if !system "cd #{path} ; git rev-parse HEAD 2> /dev/null 1> .previd"
+      system "echo 'first' > #{path}/.previd"
+    end
+  end
+
+  def self.is_json_valid(msg)
+    begin
+      JSON.parse(msg)
+      return true
+    rescue JSON::ParserError => e
+      return false
+    end
   end
   
   def self.set_status(result, task)
