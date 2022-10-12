@@ -180,8 +180,7 @@ class Manager
       to_execute.each do |execute|
 #        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
         abort("ERROR: #{execute}") if !system execute
-	tmp = `#{execute}`
-        commit_msg = JSON.parse(execute, symbolize_names: true) || execute
+        commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
         place_holder.merge!(commit_msg)
       end
       

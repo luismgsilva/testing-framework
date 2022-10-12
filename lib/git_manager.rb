@@ -38,20 +38,24 @@ class GitManager
     end
   end
   def self.search_log(args)
-    args = [args]
+   # args = [args]
     branch = `cd #{DirManager.get_framework_path} ; git branch --show-current`
     hashs = `cd #{DirManager.get_framework_path} ; git rev-list #{branch}`.split()
     cloned = hashs.clone
     hashs.each do |hash|
       header_msg = `cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash}`
-      (cloned.delete(hash) and next) if !Helper.is_json_valid(header_msg)
+    #  (cloned.delete(hash) and next) if !Helper.is_json_valid(header_msg)
       header_msg = JSON.parse(header_msg)
       args.each do |arg|
         arg =~ /(.+)=(.+)/
         cloned.delete(hash) if nested_hash_search(header_msg, $1, $2).nil?
       end
     end
-    return `cd #{DirManager.get_framework_path} ; git show #{cloned.join(" ")} -q`
+
+    if !cloned.empty?
+      return `cd #{DirManager.get_framework_path} ; git show #{cloned.join(" ")} -q` if cloned
+    else return "No Matches"
+   end
   end
 
 #  def self.search_log(search_args)

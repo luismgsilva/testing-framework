@@ -13,20 +13,25 @@ module Rules
   end
   def Rules.included(mod)
     process_opts(ARGV)
-  end 
+  end
   def process_opts(args)
     while(args[0] =~ /^-[a-z]$/)
       opt = args.shift
       if (opt == '-t')
  	@@options[:target] = args.shift.to_sym
-      elsif (opt == '-h')
-	@@options[:hashs] = @@options[:hashs] || []
-	@@options[:hashs].push(args.shift)
+      elsif (opt == '-f')
+	tmp = args.shift.split(":")
+	@@options[:files] = @@options[:files] || []
+	@@options[:files].push({ file: tmp[0], hash: tmp[1]  })
       end
     end
-    #@@options[:target] = @@options[:target] || :default
-    @@options[:target] = @@options[:target] || :json
+    #@@options[:target] = @@options[:target] || :default
+    @@options[:target] = @@options[:target] || :default
     @@options[:target] = :json
+
+    if @@options[:process_opts]
+    end
+# validar -t -f
   end
 
   def execute()
