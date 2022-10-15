@@ -34,7 +34,7 @@ class Main
     opt.condition("sources <name> git <gitcommand>")        { |opts| Source.git_sources(opts[:name], opts[:gitcommand]) }
 
     opt.condition("saveconfig <pathtosave>")                { |opts| Config.save_config(opts[:pathtosave]) }
-    opt.condition("clone <gitrepo>")                        { |opts| Manager.instance.clone(opts[:gitrepo]) }
+    opt.condition("clone <gitrepo> <dir>")                        { |opts| GitManager.get_clone_framework(opts[:gitrepo], opts[:dir]) }
 
     opt.condition("init <folderpath>")                      { |opts| Config.init_bsf(opts[:folderpath]) }
 
@@ -52,8 +52,10 @@ class Main
     opt.condition("search $<search>")                  	    { |opts| puts GitManager.search_log(opts[:search]) }
 
     opt.condition("compare {-o} <task> <hash1> {hash2}")    { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o], opts[:task])  }
+#    opt.condition("compare <task> $<args>")                  { |opts| puts Manager.instance.compare(opts[:args], opts[:task])  }
 
-    opt.condition("compare all {-o} <hash1> {hash2}")       { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o]) }
+    #opt.condition("compare all $<args>")                     { |opts| puts Manager.instance.compare(opts[:args]) }
+    opt.condition("compare all {-o} <hash1> {hash2}")       { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o])  }
 
     opt.condition("server ${options}")                      { |opts| WebServer.execute(opts[:options]) }
 
@@ -61,14 +63,68 @@ class Main
     opt.condition("status {hash} ")                         { |opts| puts Manager.instance.status(opts[:hash]) }
 
     opt.condition("clean {-y} ${task}")                     { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
-    opt.condition("ls <task> <commit_id>")                  { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
+    opt.condition("ls <task> {commit_id}")                  { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
 
-    opt.condition("cat <task> <commit_id> <file>")          { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
+    opt.condition("cat <task> <file> {commit_id}")          { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
 
     opt.parse(ARGV)
   end
 
+
   def option_parser_default_initializer(opt)
+
+    opt.default do
+      puts <<-EOF
+usage: bsf <command>
+
+These are the BSF commands used in various situations:
+
+Start a working Environment
+    init <folderpath>                  Create a new Framework Environment
+    clone <gitrepo>                    Clone an existing Framework Environment
+
+Work with task/s
+    execute ${task}                    Execute the task's execution instruction
+    log {-t} <task>                    Print or follow the task's log
+    status                             Lists the status of all tasks
+    tasks                              Lists all the tasks and its description
+
+Work with Input Variables
+    set <var>=<value>                  Defines the value to the input variable
+    vars                               Lists all the Input Variables and its value
+
+Work with lists
+    tasks                              Lists all the tasks and its description
+    vars                               Lists all Input Variables
+
+Work with the Git Repositories
+    sources get ${name}                Clone a new Source to the framework environment
+    sources delete <name>              Delete a Source from the framework environment
+    sources list                       List all the Sources in the config file
+    sources show                       Show all cloned the Sources in the framework environment
+
+Work with Git
+    git $<gitcommand>                  Execute internal git commands
+    publish                            Adds and commits with a specific commit message to local git repository
+    search $<var>=<value>              Searchs on git log's commit message
+
+Work with comparation
+    compare <task> <hash1> {hash2}     Compares test from hash1 to hash2 (Or LOCAL if hash2 not given)
+
+Extra commands
+    saveconfig <pathtosave>            Saves internal config with dependencies to pathtosave
+    clean {-y} ${task}                 Cleans workspace folder, logs and resets status
+
+
+
+	{} Optional Argument		<> Mandatory Argument		$ Capable of multiple Arguments
+
+EOF
+    end
+  end
+
+
+  def option_parser_default_initializer1(opt)
 
     opt.default do
         puts <<-EOF

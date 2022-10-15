@@ -10,7 +10,7 @@ class GitManager
   end
 
   def self.executing(to_execute)
-    puts "Executing: #{to_execute}"
+#    puts "Executing: #{to_execute}"
     return system to_execute
   end
 
@@ -25,6 +25,7 @@ class GitManager
                   git commit -m '#{commit_msg}'"
 
     Helper.reset_status if executing(to_execute)
+    system "rm -rf #{DirManager.get_build_path}/*"
   end
 
 
@@ -118,8 +119,9 @@ class GitManager
     result = executing(to_execute)
   end
 
-  def self.get_clone_framework(repo, branch = nil)
-    system "git clone " + ((branch.nil?) ? "" : " --branch #{branch} ") + " #{repo} #{DirManager.get_framework_path}"
+  def self.get_clone_framework(repo, dir)
+    DirManager.create_dir("#{dir}")
+    system "cd #{dir} ; git clone #{repo} .bsf"
   end
 
   def self.create_worktree(hash, dir)

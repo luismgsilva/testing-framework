@@ -55,7 +55,8 @@ class Config
   def self.save_config(dir_to)
     dir_from = DirManager.get_config_path
     DirManager.create_dir(dir_to)
-    DirManager.copy_folder(dir_from, dir_to)
+    DirManager.copy_folder("#{dir_from}/*", dir_to)
+    system ("rm -f #{dir_to}/vars.json")
   end 
 
   def required_variables

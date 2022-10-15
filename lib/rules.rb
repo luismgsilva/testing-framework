@@ -25,19 +25,21 @@ module Rules
 	@@options[:files].push({ file: tmp[0], hash: tmp[1]  })
       end
     end
-    #@@options[:target] = @@options[:target] || :default
     @@options[:target] = @@options[:target] || :default
-    @@options[:target] = :json
+#    @@options[:target] = :json
+
+# validar -t -f
+    if @@options[:files].nil? || @@options[:target].nil?
+	puts "nao tem files ou target"
+	exit
+    end
 
     if @@options[:process_opts]
+	@@data[@@options[:process_opts]].call(@@options)
     end
-# validar -t -f
   end
 
   def execute()
     @@data[@@options[:target]].call(@@options)
-#    @@data.each_pair do |t, b|
-#      b.call()
-#    end
   end
 end

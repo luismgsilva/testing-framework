@@ -22,7 +22,7 @@ class Build
       out = File.open(DirManager.get_log_file(task), "w")
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-        status = system("echo Executing: #{execute} ; #{execute}", out: out, err: out)
+        status = system("echo 'BSF Executing: #{execute}' ; #{execute}", out: out, err: out)
         fails.store(task, execute) and break if !status
       end
     end
@@ -64,7 +64,7 @@ class Build
       status = nil
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-        status = system "echo 'Execution instruction: #{execute}' ;
+        status = system "echo 'BSF Executing: #{execute}' ;
                          cd #{workspace_dir} ;
                          #{execute}", out: out, err: out
         break if !status

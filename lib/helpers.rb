@@ -47,7 +47,7 @@ class Helper
   end
 
   def self.check_environment(args)
-    return if (%w[init clone] & args).any?
+    return if (%w[init clone] & args).any? || args.empty?
     begin
       raise "NotTBSFEnvironmentException" if !File.directory? (DirManager.get_framework_path)
     rescue Exception => e
@@ -76,12 +76,12 @@ class Helper
       unlock()
     end
 
-    puts "DEBUG: LOCKING"
+#    puts "DEBUG: LOCKING"
     system "uptime -s > #{lock_file}"
   end
 
   def self.unlock
-    puts "DEBUG: UNLOCKING"
+#    puts "DEBUG: UNLOCKING"
     lock_file = DirManager.get_lock_file
     return system("rm -rf #{lock_file}") if File.exists? lock_file
   end

@@ -14,15 +14,20 @@ class WebServer < Sinatra::Base
     
     end
    
-    get "/compare/:hash1/:hash2.:target" do
-      Manager.instance.compare(params["hash1"], params["hash2"], "-t #{params[:target]}")
+#    get "/compare/:hash1/:hash2.:target" do
+#      Manager.instance.compare(params["hash1"], params["hash2"], "-t #{params[:target]}")
       
+#    end
+
+    get "/compare/:task/:hash1/:hash2" do
+      Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
     end
-    
     get "/ls/:task/:hash" do
       Manager.instance.ls(params["task"], params["hash"])
     end
-    
+    get "/cat/:task/:hash/:file" do
+      Manager.instance.cat(params[:task], params[:hash], params[:file])
+    end
     get "/status/:hash" do
       Manager.instance.status(params[:hash])
     end

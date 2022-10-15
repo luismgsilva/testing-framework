@@ -146,19 +146,27 @@ class Manager
   def ls(task, commit_id)
     tmp_dir = DirManager.get_worktree_dir()
     to_print = ""
+    if commit_id
+      GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
+      to_print = `ls #{tmp_dir}/tasks/#{task}`
+      GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
+    else
 
-    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
-    to_print = `ls #{tmp_dir}/tasks/#{task}`
-    GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
+      to_print = `ls #{DirManager.get_persistent_ws_path}/#{task}`
+    end
     return to_print
   end
 
   def cat(task, commit_id, file)
     tmp_dir = DirManager.get_worktree_dir()
     to_print = ""
-    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
-    to_print = `cat #{tmp_dir}/tasks/#{task}/#{file}`
-    GitManager.internal_git("worktree remove #{tmp_dir}")
+    if commit_id
+      GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
+      to_print = `cat #{tmp_dir}/tasks/#{task}/#{file}`
+      GitManager.internal_git("worktree remove #{tmp_dir}")
+    else
+      to_print = `cat #{DirManager.get_persistent_ws_path}/#{task}/#{file}`
+    end
     return to_print
   end
 

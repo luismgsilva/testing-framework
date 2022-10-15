@@ -12,7 +12,7 @@ module DirManager
     "#{pwd}/#{FRAMEWORK}"
   end
   def self.get_build_path
-    "#{pwd}/build"
+    "#{pwd}/workspace"
   end
   def self.get_sources_path
     "#{pwd}/sources"
@@ -55,7 +55,7 @@ module DirManager
     system("cp #{file_from} #{file_to}")
   end
   def self.delete_build_dir(repo_name)
-    path = "#{Dir.getwd}/build/#{repo_name}"
+    path = "#{get_build_path}/#{repo_name}"
     system "rm -rf #{path}" if File.directory? path
   end
   def self.clean_tasks_folder(task)
@@ -66,13 +66,13 @@ module DirManager
   end
 
   def self.get_worktree_dir()
-    dir = "#{Dir.getwd}/build/worktree"
+    dir = "#{get_build_path}/worktree"
     create_dir(dir)
     return dir
   end
 
   def self.get_compare_dir()
-    dir = "#{Dir.getwd}/build/compare/"
+    dir = "#{get_build_path}/compare/"
     create_dir(dir)
     return "#{dir}/1", "#{dir}/2"
   end
