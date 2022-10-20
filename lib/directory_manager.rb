@@ -71,10 +71,11 @@ module DirManager
     return dir
   end
 
-  def self.get_compare_dir()
-    dir = "#{get_build_path}/compare/"
+  def self.get_compare_dir(index)
+    dir = "#{get_build_path}/compare/#{index}"
     create_dir(dir)
-    return "#{dir}/1", "#{dir}/2"
+    return dir
+#    return "#{dir}/1", "#{dir}/2"
   end
   def self.create_directories(name)
     paths = ["#{Dir.getwd}/build/#{name}",

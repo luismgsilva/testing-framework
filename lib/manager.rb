@@ -48,73 +48,94 @@ class Manager
     return to_print
   end
 
-  def get_commit_data(root)
+  def get_commit_data(root, current_commit_id)
     commit_ids = `cd #{root} ; git rev-list --all`.split("\n").reverse
-    current_commit_id = `cd #{root} ; git rev-parse HEAD`.chomp
+#    current_commit_id = `cd #{root} ; git rev-parse HEAD`.chomp
+
+    if system ("cd #{root} ; git show-ref -s #{current_commit_id}")
+      current_commit_id = `cd #{root} ; git show-ref -s #{current_commit_id}`.chomp
+    end
+#    current_commit_id = `cd #{root} ; git show-ref -s #{current_commit_id}`.chomp || current_commit_id
+p current_commit_id
     previous_commit_id = commit_ids[(commit_ids.find_index(current_commit_id) -1)]
-    return { "commit_ids" => commit_ids, "current_commit_id" => current_commit_id, "previous_commit_id" => previous_commit_id }
-    return previous_commit_id
+    return { commit_ids: commit_ids, prev_commit_id: previous_commit_id }
+#    return { "commit_ids" => commit_ids, "current_commit_id" => current_commit_id, "previous_commit_id" => previous_commit_id }
+#    return previous_commit_id
   end
 
-  def compare(baseline, reference, options, t = nil)
+  def compare(options)
+#p options
     to_print = ""
     options = options || ""
-    dir1, dir2 = DirManager.get_compare_dir()
+    opts = options.clone
+    files = {}
+    target = ""
+    extra = []
+#    while (opts.include?("-t") or opts.include?("-f"))
 
-    GitManager.create_worktree(baseline, dir1)
-    GitManager.create_worktree(reference, dir2) if !reference.nil?
-    dir2 = DirManager.get_framework_path if reference.nil?
-    dir1 += "/tasks"
-    dir2 += "/tasks"
-
-    commit_data1 = get_commit_data(dir1)
-    commit_data2 = get_commit_data(dir2)
-
+#    while true
+#    coiso = opts[0].split(":")
+    coiso = opts.shift.split(":")
+    
+    coiso.each do |hash|
+      dir = DirManager.get_compare_dir(hash)
+      GitManager.create_worktree(hash, dir)
+      files[hash] = { path: dir }.merge(get_commit_data(dir, hash))
+    end
+    puts JSON.pretty_generate files
+#    end
+#    while !opts.empty?
+#      opt = opts.shift
+#      if opt =~ /-f/
+#        file_hash = opts.shift.split(":")
+#        dir = DirManager.get_compare_dir(file_hash[1])
+#	GitManager.create_worktree(file_hash[1], dir)
+#        files[file_hash[1]] = { path: dir, file: file_hash[0]}.merge(get_commit_data(dir, file_hash[1]))
+#      elsif opt =~ /-t/
+#	target = opts.shift
+#      else
+#        extra.push(opt)
+#      end
+#    end
 
     json_agregator = {}
     to_execute_commands = {}
     
-    is_agregator = t.nil?
+    is_agregator = target.empty?
 
-    if is_agregator
-#        tasks = DirManager.intersect_children_path(dir1, dir2)
-#	tasks = (Dir.children(dir1) + Dir.children(dir2)).uniq
-        tasks = Config.instance.tasks.keys
-    else
-        tasks = [t]
-    end
+    tasks = (is_agregator) ? Config.instance.tasks.keys : [target]
+
+
 
     #DEBUG
+    tasks = ["hs_baremetal_qemu_tests"]
+    is_agregator = false
     tasks.delete(:hs_baremetal_qemu_vs_nsim)
 
 
+#    opts = extra.join(" ")
+    opts = opts.join(" ")
     tasks.each do |task|
-        Helper.set_internal_vars(task)
-
-        if File.exists?("#{dir1}/#{task}/.previd")
-          previd1 = File.read("#{dir1}/#{task}/.previd").chomp
-          if previd1 == 'first'
-            baseline_previd_exists = commit_data1["commit_ids"][0] == commit_data1["current_commit_id"]
-          else
-            baseline_previd_exists = File.read("#{dir1}/#{task}/.previd").chomp == commit_data1["previous_commit_id"]
+      Helper.set_internal_vars(task)
+        files.each_pair do |k, v|
+          if File.exists?("#{v[:path]}/tasks/#{task}/.previd")
+            previd = File.read("#{v[:path]}/tasks/#{task}/.previd").chomp
+p previd
+            if previd == 'first'
+              to_compare = v[:commit_ids][0] == k
+              if system ("cd #{v[:path]} ; git show-ref -s #{k}")#
+                to_compare = v[:commit_ids][0] ==  `cd #{v[:path]} ; git show-ref -s #{k}`.chomp#
+              end#
+	    else
+	      to_compare = previd == v[:prev_commit_id]
+	    end
+          else 
+	      to_compare = false
           end
-	else
-          baseline_previd_exists = false
+	  opts += (to_compare) ? " -h #{v[:path]}/tasks/#{task}/#{v[:file]}:#{k}" : " -h :#{k}"
         end
-
-        if File.exists?("#{dir2}/#{task}/.previd")
-          previd2 = File.read("#{dir2}/#{task}/.previd").chomp
-          if previd2 == 'first'
-            reference_previd_exists = commit_data2["commit_ids"][0] == commit_data2["current_commit_id"]
-          else
-            reference_previd_exists = File.read("#{dir2}/#{task}/.previd").chomp == commit_data2["previous_commit_id"]
-          end
-	else
-	  baseline_previd_exists = false
-	end
-        VarManager.instance.set_internal("@BASELINE", (baseline_previd_exists) ? "#{dir1}/#{task}" : "")
-        VarManager.instance.set_internal("@REFERENCE", (reference_previd_exists) ? "#{dir2}/#{task}" : "")
-        VarManager.instance.set_internal("@OPTIONS", (is_agregator) ? "-t json" : options)
+        VarManager.instance.set_internal("@OPTIONS", (is_agregator) ? "-o json" : opts)
+      
         
         commands = Config.instance.comparator(task)
        #commands = [commands] if commands.class == String
@@ -125,9 +146,9 @@ class Manager
           if is_agregator
             json_agregator.merge!(JSON.parse(`#{to_execute}`))
           else
-            to_print = `#{to_execute}` 
+#            p to_execute
+            to_print = `#{to_execute}`
           end
-        # end
     end
     if is_agregator
         VarManager.instance.set_internal("@OPTIONS", options) if !options.nil?
@@ -136,9 +157,9 @@ class Manager
         to_execute = VarManager.instance.prepare_data(command)
         to_print = `#{to_execute}`
     end
-    dir1, dir2 = DirManager.get_compare_dir()
-    GitManager.remove_worktree(dir1)
-    GitManager.remove_worktree(dir2) if !reference.nil?
+    files.each_pair do |k, v|
+      GitManager.remove_worktree(v[:path])
+    end
     return to_print
   end
 
