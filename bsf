@@ -6,6 +6,10 @@ require_relative './lib/webserver.rb'
 class Main
   def initialize
     args = ARGV.clone
+    Signal.trap("SIGPIPE") do
+      Helper.lock_mg(:UNLOCK, args)
+      exit
+    end
     Helper.check_environment(args)
     Helper.lock_mg(:LOCK, args)
 
@@ -20,6 +24,8 @@ class Main
       puts e
       Helper.lock_mg(:UNLOCK, args)
     rescue Interrupt
+      Helper.lock_mg(:UNLOCK, args)
+    rescue EPIPE
       Helper.lock_mg(:UNLOCK, args)
     end
   end
@@ -52,10 +58,12 @@ class Main
     opt.condition("search $<search>")                  	    { |opts| puts GitManager.search_log(opts[:search]) }
 
 #    opt.condition("compare {-o} <task> <hash1> {hash2}")    { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o], opts[:task])  }
-    opt.condition("compare $<args>")    		    { |opts| puts Manager.instance.compare(opts[:args]) }
+    opt.condition("compare all $<args>")    		            { |opts| puts Manager.instance.compare_agregator(opts[:args]) }
+    opt.condition("compare <task> $<args>")    		          { |opts| puts Manager.instance.compare(opts[:task], opts[:args]) }
+ #   opt.condition("compare $<args>")    		    { |opts| puts Manager.instance.compare(opts[:args]) }
 
 
-    opt.condition("compare all {-o} <hash1> {hash2}")       { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o])  }
+ #   opt.condition("compare all {-o} <hash1> {hash2}")       { |opts| puts Manager.instance.compare(opts[:hash1], opts[:hash2], opts[:o])  }
 
     opt.condition("server ${options}")                      { |opts| WebServer.execute(opts[:options]) }
 
@@ -80,8 +88,8 @@ usage: bsf <command>
 These are the BSF commands used in various situations:
 
 Start a working Environment
-    init <folderpath>                  Create a new Framework Environment
-    clone <gitrepo>                    Clone an existing Framework Environment
+    init <folderpath>                  Create a new Framework Environment
+    clone <gitrepo> <dir>              Clone an existing Framework Environment to a directory
 
 Work with task/s
     execute ${task}                    Execute the task's execution instruction

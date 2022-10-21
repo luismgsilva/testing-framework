@@ -18,20 +18,20 @@ module Rules
     process_opts(ARGV)
   end
   def process_opts(args)
-#    while(args[0] =~ /^-[a-z]$/)
     @@options[:process_opts] = []
     while(args.include?("-h") or args.include?("-o"))
       opt = args.shift
       if (opt == '-o')
- 	@@options[:output] = args.shift.to_sym
+        @@options[:output] = args.shift.to_sym
       elsif (opt == '-h')
-	tmp = args.shift.split(":")
-	@@options[:files] = @@options[:files] || []
-	@@options[:files].push({ file: tmp[0], hash: tmp[1]  })
+	      tmp = args.shift.split(":")
+	      @@options[:files] = @@options[:files] || []
+	      @@options[:files].push({ file: tmp[0], hash: tmp[1]  })
       else
         @@options[:process_opts].push(opt)
       end
     end
+    @@options[:process_opts] += args
 #     @@options[:opts] = args
 #    @@options[:output] = @@options[:output] || :default
 #    @@options[:process_opts] = args
@@ -55,12 +55,9 @@ module Rules
   def execute()
     
     if @@options[:process_opts]
-   p "dawdawd"
-      p @@options[:process_opts]
       @@data[:process_opts].call(@@options[:process_opts])
     end
     if(@@options[:output].nil?)
-        p @@options[:default]
 	@@data[@@options[:default]].call(@@options[:files])
     else
     	@@data[@@options[:output]].call(@@options[:files])

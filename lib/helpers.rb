@@ -30,7 +30,7 @@ class Helper
     data = "{}"
     file = DirManager.get_status_file
     data = File.read(file) if(File.exists?(file))
-    status = JSON.parse(data, symbolize_names: true)
+    status = JSON.parse(data)
     status[task] = result && 0 || 1
     DirManager.create_dir_for_file(file)
     File.write(file, JSON.pretty_generate(status))

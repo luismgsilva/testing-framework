@@ -6,22 +6,25 @@ class WebServer < Sinatra::Base
 
   set :default_content_type, 'application/json'
 
-
-
   def self.execute(opts)
     get "/" do
-      "Hello World!".to_json
-    
     end
    
-#    get "/compare/:hash1/:hash2.:target" do
-#      Manager.instance.compare(params["hash1"], params["hash2"], "-t #{params[:target]}")
-      
-#    end
-
-    get "/compare/:task/:hash1/:hash2" do
-      Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
+    # get "/compare/:task/:hash1/:hash2" do
+    #   Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
+    # end
+    get "/compare/:hash1/:hash2" do
+      # Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
+      args = ["#{params[:hash1]}:#{params[:hash2]}"]
+      Manager.instance.compare_agregator(args)
     end
+    get "/compare/:hash1/:hash2/:opts" do
+      # Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
+      args = ["#{params[:hash1]}:#{params[:hash2]}", params[:opts]]
+      Manager.instance.compare_agregator(args)
+    end
+
+
     get "/ls/:task/:hash" do
       Manager.instance.ls(params["task"], params["hash"])
     end
