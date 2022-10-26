@@ -8,6 +8,9 @@ module Rules
   def to_text(&block)
     @@data[:text] = block
   end
+  def to_chart(&block)
+    @@data[:chart] = block
+  end
   def set_default(name)
     @@options[:default] = name
   end
@@ -32,33 +35,15 @@ module Rules
       end
     end
     @@options[:process_opts] += args
-#     @@options[:opts] = args
-#    @@options[:output] = @@options[:output] || :default
-#    @@options[:process_opts] = args
-#    @@options[:target] = :json
-# validar -t -f
-#    if @@options[:files].nil? || @@options[:target].nil?
-#	puts "nao tem files ou target"
-#	exit
-#    end
-
-#    p @@options[:process_opts]
-#exit   
-# if @@options[:process_opts]
-#    p "dadawd"
-#    p args
-#exit
-#	@@data[@@options[:process_opts]].call(args)
-#    end
   end
 
   def execute()
-    
     if @@options[:process_opts]
       @@data[:process_opts].call(@@options[:process_opts])
     end
+
     if(@@options[:output].nil?)
-	@@data[@@options[:default]].call(@@options[:files])
+	    @@data[@@options[:default]].call(@@options[:files])
     else
     	@@data[@@options[:output]].call(@@options[:files])
     end

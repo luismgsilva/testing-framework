@@ -42,7 +42,7 @@ class Manager
   def tasks_list()
     to_print = ""
     Config.instance.tasks.keys.each do |task|
-	to_print += "#{task}:\n    Description: #{Config.instance.task_description(task)}\n\n"
+	    to_print += "#{task}:\n    Description: #{Config.instance.task_description(task)}\n\n"
     end
     return to_print
   end
@@ -64,7 +64,12 @@ class Manager
     opts = options.clone
     files = {}
 
+    tmp = []
     opts.shift.split(":").each do |hash|
+      abort("ERROR: #{hash} not valid") if check_commit_id(hash)
+      tmp.push(hash)
+    end
+    tmp.each do |hash|
       dir = DirManager.get_compare_dir(hash)
       GitManager.create_worktree(hash, dir)
       files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
@@ -73,20 +78,13 @@ class Manager
     opts = opts.join(" ")
     Helper.set_internal_vars(target)
     files.each_pair do |k, v|
-      if File.exists?("#{v[:path]}/tasks/#{target}/.previd")
-        previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
-        if previd == 'first'
-          to_compare = v[:commit_ids][0] == k
-          if system ("cd #{v[:path]} ; git show-ref -s #{k} > /dev/null")#
-            to_compare = v[:commit_ids][0] ==  `cd #{v[:path]} ; git show-ref -s #{k}`.chomp#
-          end#
-	      else
-	        to_compare = previd == v[:prev_commit_id]
-	      end
-      else
-	      to_compare = false
+      if !File.exists?("#{v[:path]}/tasks/#{target}/.previd")
+        opts += " -h :#{k}"
+        next
       end
-	    opts += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}" : " -h :#{k}"
+      previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
+      to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
+      opts += " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}"
     end
     VarManager.instance.set_internal("@OPTIONS", opts)
 
@@ -104,6 +102,7 @@ class Manager
     return !system("cd #{DirManager.get_framework_path} ; git rev-parse #{commit_id} > /dev/null 2>&1")
   end
 
+
   def compare_agregator(options)
     to_print = ""
     options = options || ""
@@ -115,54 +114,44 @@ class Manager
       abort("ERROR: #{hash} not valid") if check_commit_id(hash)
       tmp.push(hash)
     end
-    # opts.split(":").each do |hash|
     tmp.each do |hash|
       dir = DirManager.get_compare_dir(hash)
       GitManager.create_worktree(hash, dir)
       files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
     end
-    #opts = opts.join(" ")
     json_agregator = {}
 
-    tasks = ["hs_baremetal_qemu_tests", "hs_baremetal_nsim_tests"]
     opts_ = ""
     tasks.each do |target|
       opts_ = opts.join(" ")
       Helper.set_internal_vars(target)
       files.each_pair do |k, v|
-        if File.exists?("#{v[:path]}/tasks/#{target}/.previd")
-          previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
-          if previd == 'first'
-            to_compare = v[:commit_ids][0] == k
-            if system ("cd #{v[:path]} ; git show-ref -s #{k}")#
-              to_compare = v[:commit_ids][0] ==  `cd #{v[:path]} ; git show-ref -s #{k}`.chomp#
-            end#
-          else
-            to_compare = previd == v[:prev_commit_id]
-          end
-        else
-          to_compare = false
+        if !File.exists?("#{v[:path]}/tasks/#{target}/.previd")
+          opts_ += " -h :#{k}"
+          next
         end
-        opts_ += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}" : " -h :#{k}"
+        previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
+        to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
+        opts_ += " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}"
       end
       VarManager.instance.set_internal("@OPTIONS", "#{opts_} -o json")
-
       commands = Config.instance.comparator(target)
       to_execute = VarManager.instance.prepare_data(commands)
       json_agregator.merge!(JSON.parse(`#{to_execute}`))
-
     end
-    #puts JSON.pretty_generate json_agregator
 
-    File.write("/tmp/luiss/json", JSON.pretty_generate(json_agregator))
 
+    tmpfile = `mktemp`
+    system("echo '#{JSON.pretty_generate(json_agregator)}' > #{tmpfile}")
+#    File.write(tmpfile, JSON.pretty_generate(json_agregator))
+   #  File.write("/tmp/luiss/json", JSON.pretty_generate(json_agregator))
     VarManager.instance.set_internal("@OPTIONS", "#{opts_}")
-    VarManager.instance.set_internal("@AGREGATOR", "/tmp/luiss/json") #
+  #   VarManager.instance.set_internal("@AGREGATOR", "/tmp/luiss/json") #
+    VarManager.instance.set_internal("@AGREGATOR", tmpfile) #
 
     command = Config.instance.comparator_agregator()
     to_execute = VarManager.instance.prepare_data(command)
     to_print = `#{to_execute}`
-#    puts to_execute
 
     files.each_pair do |k, v|
       GitManager.remove_worktree(v[:path])

@@ -6,6 +6,8 @@ class WebServer < Sinatra::Base
 
   set :default_content_type, 'application/json'
 
+
+
   def self.execute(opts)
     get "/" do
     end
