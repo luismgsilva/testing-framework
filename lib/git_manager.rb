@@ -10,7 +10,6 @@ class GitManager
   end
 
   def self.executing(to_execute)
-#    puts "Executing: #{to_execute}"
     return system to_execute
   end
 

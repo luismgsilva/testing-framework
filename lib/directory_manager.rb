@@ -75,12 +75,10 @@ module DirManager
     dir = "#{get_build_path}/compare/#{index}"
     create_dir(dir)
     return dir
-#    return "#{dir}/1", "#{dir}/2"
   end
   def self.create_directories(name)
     paths = ["#{Dir.getwd}/build/#{name}",
              "#{Dir.getwd}/#{FRAMEWORK}/logs/" #,
-             # "#{Dir.getwd}/.bla/tests/"
     ]
     paths.each { |path| create_dir(path) }
   end
