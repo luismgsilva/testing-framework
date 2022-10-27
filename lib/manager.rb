@@ -49,48 +49,70 @@ class Manager
     return to_print
   end
 
-  def get_commit_data(root, current_commit_id)
-    commit_ids = `cd #{root} ; git rev-list --all`.split("\n").reverse
+  def get_commit_data(root, current_commit_id = nil)
 
-    if system ("cd #{root} ; git show-ref -s #{current_commit_id} > /dev/null")
-      current_commit_id = `cd #{root} ; git show-ref -s #{current_commit_id}`.chomp
-    end
-    previous_commit_id = commit_ids[(commit_ids.find_index(current_commit_id) -1)]
+    return { prev_commit_id: "first" } if !File.exists? "#{DirManager.get_framework_path}/.git"
+    return { prev_commit_id: `cd #{root} ; git rev-parse HEAD`.chomp } if current_commit_id.nil?
+
+    commit_ids = `cd #{root} ; git rev-list --all`.split("\n")
+    commit_ids.push("first")
+    commit_ids = commit_ids.reverse
+    current_commit_id = `cd #{root} ; git rev-parse #{current_commit_id}`.chomp
+    previous_commit_id = commit_ids[(commit_ids.find_index(current_commit_id) -1)] || "first"
     return { commit_ids: commit_ids, prev_commit_id: previous_commit_id }
   end
 
   def report(target, options)
-
-    abort("WARMING: Report not supported") if Config.instance.report(target).nil? #
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
+    abort("WARMING: Report not supported") if Config.instance.report(target).nil? #
+
+    commit_id = nil
+    while options.include? "-h"
+      tmp = options.shift
+      if tmp =~ /-h/
+        commit_id = options.shift
+      end
+    end if options
 
     to_print = ""
     options = options || ""
-    path = DirManager.get_persistent_ws_path()
-    if !File.exists?("#{path}/#{target}/.previd")
+
+    if commit_id
+      abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
+      dir = DirManager.get_compare_dir(commit_id)
+      GitManager.create_worktree(commit_id, dir)
+      file = { hash: commit_id, path: dir, }.merge(get_commit_data(dir, commit_id))
+    else
+      dir = DirManager.get_framework_path()
+      file = { hash: "LOCAL", path: dir, }.merge(get_commit_data(dir))
+    end
+
+
+    if !File.exists?("#{dir}/tasks/#{target}/.previd")
       return "no"
-
-      # previd = File.read("#{path}/tasks/#{target}/.previd").chomp
-      # to_report = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-      # opts += " -h #{v[:path]}/tasks/#{target}/:#{k}"
-
     end
     options = options.join(" ") if options.class == Array
-    options += " -h #{path}/#{target}:#{"HEAD"}"
+
+    previd = File.read("#{dir}/tasks/#{target}/.previd").chomp
+    to_report = previd == file[:prev_commit_id]
+    abort("ERROR: Task #{target} not executed") if !to_report
+    options += " -h #{file[:path]}/tasks/#{target}:#{file[:hash]}"
+
     VarManager.instance.set_internal("@OPTIONS", options)
     Helper.set_internal_vars(target)
     commands = Config.instance.report(target)
     to_execute = VarManager.instance.prepare_data(commands)
     to_print = `#{to_execute}`
 
+    GitManager.remove_worktree(file[:path]) if commit_id
+
     return to_print
   end
 
 
   def compare(target, options)
-    abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
-
+    abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
     to_print = ""
     options = options || ""
     opts = options.clone
@@ -107,6 +129,11 @@ class Manager
       files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
     end
 
+    if files.length == 1
+      dir = DirManager.get_framework_path()
+      files["LOCAL"] = { path: dir, }.merge(get_commit_data(dir))
+    end
+
     opts = opts.join(" ")
     Helper.set_internal_vars(target)
     files.each_pair do |k, v|
@@ -115,7 +142,8 @@ class Manager
         next
       end
       previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
-      to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
+      # to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
+      to_compare = previd == v[:prev_commit_id]
       opts += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/:#{k}" : " -h :#{k}"
     end
     VarManager.instance.set_internal("@OPTIONS", opts)
@@ -135,63 +163,31 @@ class Manager
   end
 
 
-  def compare_agregator(options)
+  def agregator(options)
     abort("WARMING: Comparator agregator not supported") if Config.instance.comparator_agregator().nil?
-    to_print = ""
-    options = options || ""
-    opts = options.clone
-    files = {}
+    opts = [options[0], "-o", "json"]
+    agregator = {}
+    tasks = Config.instance.tasks.keys
+    tasks.each do |task|
+      agregator.merge!(JSON.parse(compare(task, opts)))
+    end
 
     tmp = []
-    opts.shift.split(":").each do |hash|
-      abort("ERROR: #{hash} not valid") if check_commit_id(hash)
-      tmp.push(hash)
-    end
-    tmp.each do |hash|
-      dir = DirManager.get_compare_dir(hash)
-      GitManager.create_worktree(hash, dir)
-      files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
-    end
-    json_agregator = {}
-    opts_ = ""
-    tasks = Config.instance.tasks.keys
-    tasks.each do |target|
+    options.shift.split(":").each { |hash| tmp.push(hash) }
 
-      next if Config.instance.comparator(target).nil?
+    tmp.push("LOCAL") if tmp.length == 1
 
-      opts_ = opts.join(" ")
-      Helper.set_internal_vars(target)
-      files.each_pair do |k, v|
-        if !File.exists?("#{v[:path]}/tasks/#{target}/.previd")
-          opts_ += " -h :#{k}"
-          next
-        end
-
-        previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
-        to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-        opts_ += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/:#{k}" : " -h :#{k}"
-      end
-
-      VarManager.instance.set_internal("@OPTIONS", "#{opts_} -o json")
-      commands = Config.instance.comparator(target)
-      to_execute = VarManager.instance.prepare_data(commands)
-      json_agregator.merge!(JSON.parse(`#{to_execute}`))
-    end
-
+    options = options.join(" ")
+    tmp.each { |h| options += " -h _:#{h}" }
 
     tmpfile = `mktemp`
-    system("echo '#{JSON.pretty_generate(json_agregator)}' > #{tmpfile}")
-    VarManager.instance.set_internal("@OPTIONS", "#{opts_}")
+    system("echo '#{JSON.pretty_generate(agregator)}' > #{tmpfile}")
+    VarManager.instance.set_internal("@OPTIONS", "#{options}")
     VarManager.instance.set_internal("@AGREGATOR", tmpfile) #
 
     command = Config.instance.comparator_agregator()
     to_execute = VarManager.instance.prepare_data(command)
     to_print = `#{to_execute}`
-
-    files.each_pair do |k, v|
-      GitManager.remove_worktree(v[:path])
-    end
-    return to_print
   end
 
   def ls(task, commit_id)
@@ -223,7 +219,8 @@ class Manager
 
     commit_msg_hash = {}
     status = JSON.parse(File.read(DirManager.get_status_file))
-    Dir.children(persistent_ws).select { |task| status[task] == 0 }.sort.each do |task|
+
+    Config.instance.tasks.keys.select { |task| status[task.to_s] == 0 }.sort.each do |task|
       
       to_execute = Config.instance.publish_header(task)
       
