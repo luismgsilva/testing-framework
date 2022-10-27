@@ -77,6 +77,9 @@ class Config
   def comparator(task)
     return tasks[task.to_sym][:comparator]
   end
+  def report(task)
+    return tasks[task.to_sym][:report]
+  end
   def comparator_agregator()
    return @config[:comparator_agregator]
   end 

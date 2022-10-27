@@ -57,8 +57,32 @@ class Manager
     return { commit_ids: commit_ids, prev_commit_id: previous_commit_id }
   end
 
+  def report(target, options)
+
+    abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
+
+    to_print = ""
+    options = options || ""
+    path = DirManager.get_persistent_ws_path()
+    if !File.exists?("#{path}/#{target}/.previd")
+      to_print = "no"
+      return to_print
+    end
+    options = options.join(" ") if options.class == Array
+    options += " -h #{path}/#{target}:#{"HEAD"}"
+    VarManager.instance.set_internal("@OPTIONS", options)
+    Helper.set_internal_vars(target)
+    commands = Config.instance.report(target)
+    to_execute = VarManager.instance.prepare_data(commands)
+    to_print = `#{to_execute}`
+
+    return to_print
+  end
+
 
   def compare(target, options)
+    abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
+
     to_print = ""
     options = options || ""
     opts = options.clone
@@ -84,7 +108,7 @@ class Manager
       end
       previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
       to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-      opts += " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}"
+      opts += " -h #{v[:path]}/tasks/#{target}/:#{k}"
     end
     VarManager.instance.set_internal("@OPTIONS", opts)
 
@@ -132,7 +156,7 @@ class Manager
         end
         previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
         to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-        opts_ += " -h #{v[:path]}/tasks/#{target}/#{v[:file]}:#{k}"
+        opts_ += " -h #{v[:path]}/tasks/#{target}/:#{k}"
       end
       VarManager.instance.set_internal("@OPTIONS", "#{opts_} -o json")
       commands = Config.instance.comparator(target)
