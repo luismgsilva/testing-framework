@@ -69,6 +69,11 @@ class Manager
     path = DirManager.get_persistent_ws_path()
     if !File.exists?("#{path}/#{target}/.previd")
       return "no"
+
+      # previd = File.read("#{path}/tasks/#{target}/.previd").chomp
+      # to_report = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
+      # opts += " -h #{v[:path]}/tasks/#{target}/:#{k}"
+
     end
     options = options.join(" ") if options.class == Array
     options += " -h #{path}/#{target}:#{"HEAD"}"
@@ -111,7 +116,7 @@ class Manager
       end
       previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
       to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-      opts += " -h #{v[:path]}/tasks/#{target}/:#{k}"
+      opts += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/:#{k}" : " -h :#{k}"
     end
     VarManager.instance.set_internal("@OPTIONS", opts)
 
@@ -132,7 +137,6 @@ class Manager
 
   def compare_agregator(options)
     abort("WARMING: Comparator agregator not supported") if Config.instance.comparator_agregator().nil?
-
     to_print = ""
     options = options || ""
     opts = options.clone
@@ -149,9 +153,10 @@ class Manager
       files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
     end
     json_agregator = {}
-
     opts_ = ""
+    tasks = Config.instance.tasks.keys
     tasks.each do |target|
+
       next if Config.instance.comparator(target).nil?
 
       opts_ = opts.join(" ")
@@ -161,10 +166,12 @@ class Manager
           opts_ += " -h :#{k}"
           next
         end
+
         previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
         to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
-        opts_ += " -h #{v[:path]}/tasks/#{target}/:#{k}"
+        opts_ += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/:#{k}" : " -h :#{k}"
       end
+
       VarManager.instance.set_internal("@OPTIONS", "#{opts_} -o json")
       commands = Config.instance.comparator(target)
       to_execute = VarManager.instance.prepare_data(commands)
