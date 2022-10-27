@@ -28,6 +28,7 @@ class Manager
   def clone(repo)
     GitManager.get_clone_framework(repo)
   end
+
   def clean(tasks = nil, skip_flag = nil)
     tasks = Config.instance.tasks.keys if tasks.nil?
     tasks = [tasks] if tasks.class == String
@@ -39,6 +40,7 @@ class Manager
     tasks.each { |task| DirManager.clean_tasks_folder(task) }
     Helper.reset_status()
   end
+
   def tasks_list()
     to_print = ""
     Config.instance.tasks.keys.each do |task|
@@ -59,6 +61,7 @@ class Manager
 
   def report(target, options)
 
+    abort("WARMING: Report not supported") if Config.instance.report(target).nil?
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
 
     to_print = ""
@@ -81,6 +84,7 @@ class Manager
 
 
   def compare(target, options)
+    abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
 
     to_print = ""
@@ -128,6 +132,8 @@ class Manager
 
 
   def compare_agregator(options)
+    abort("WARMING: Comparator agregator not supported") if Config.instance.comparator_agregator().nil?
+
     to_print = ""
     options = options || ""
     opts = options.clone
@@ -147,6 +153,8 @@ class Manager
 
     opts_ = ""
     tasks.each do |target|
+      next if Config.instance.comparator(target).nil?
+
       opts_ = opts.join(" ")
       Helper.set_internal_vars(target)
       files.each_pair do |k, v|
@@ -167,10 +175,7 @@ class Manager
 
     tmpfile = `mktemp`
     system("echo '#{JSON.pretty_generate(json_agregator)}' > #{tmpfile}")
-#    File.write(tmpfile, JSON.pretty_generate(json_agregator))
-   #  File.write("/tmp/luiss/json", JSON.pretty_generate(json_agregator))
     VarManager.instance.set_internal("@OPTIONS", "#{opts_}")
-  #   VarManager.instance.set_internal("@AGREGATOR", "/tmp/luiss/json") #
     VarManager.instance.set_internal("@AGREGATOR", tmpfile) #
 
     command = Config.instance.comparator_agregator()
@@ -216,7 +221,6 @@ class Manager
     commit_msg_hash = {}
     status = JSON.parse(File.read(DirManager.get_status_file))
     Dir.children(persistent_ws).select { |task| status[task] == 0 }.sort.each do |task|
-#    Dir.children(persistent_ws).sort.each do |task|
       
       to_execute = Config.instance.publish_header(task)
       
@@ -226,7 +230,6 @@ class Manager
       place_holder = {}
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-#        abort("ERROR: Tools version not found") if !system execute + "> /dev/null 2>&1"
         abort("ERROR: #{execute}") if !system execute
         commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
         place_holder.merge!(commit_msg)
@@ -262,7 +265,6 @@ class Manager
       else
         status = Helper.get_status
       end
-#      status.each_pair { |task, result| to_print += "#{result ? "Passed" : "Failed"}: #{task}\n" }
       status.each_pair { |task, result| to_print += "#{mapping[result]}: #{task}\n" }
       GitManager.internal_git("worktree remove #{worktree_dir}") if !commit_id.nil?
     rescue Exception => e
