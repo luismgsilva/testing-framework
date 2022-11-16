@@ -6,6 +6,7 @@ require_relative './lib/webserver.rb'
 class Main
   def initialize
     args = ARGV.clone
+    ENV["RUBYLIB"] = "#{File.dirname(__FILE__)}/lib"
     Signal.trap("SIGPIPE") do
       Helper.lock_mg(:UNLOCK, args)
       exit
@@ -86,7 +87,7 @@ Start a working Environment
 
 Work with task/s
     execute ${task}                    Execute the task's execution instruction
-    log {-t} <task>                    Print or follow the task's log
+    log {-f} <task>                    Print or follow the task's log
     status                             Lists the status of all tasks
     tasks                              Lists all the tasks and its description
 

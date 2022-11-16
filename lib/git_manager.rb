@@ -38,13 +38,11 @@ class GitManager
     end
   end
   def self.search_log(args)
-   # args = [args]
     branch = `cd #{DirManager.get_framework_path} ; git branch --show-current`
     hashs = `cd #{DirManager.get_framework_path} ; git rev-list #{branch}`.split()
     cloned = hashs.clone
     hashs.each do |hash|
       header_msg = `cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash}`
-    #  (cloned.delete(hash) and next) if !Helper.is_json_valid(header_msg)
       header_msg = JSON.parse(header_msg)
       args.each do |arg|
         arg =~ /(.+)=(.+)/
@@ -53,54 +51,11 @@ class GitManager
     end
 
     if !cloned.empty?
-      return `cd #{DirManager.get_framework_path} ; git show #{cloned.join(" ")} -q` if cloned
+      return `cd #{DirManager.get_framework_path} ; git show #{cloned.join(" ")} -q`
     else return "No Matches"
    end
   end
 
-#  def self.search_log(search_args)
-#    my_lambda = -> (iterate, key_search, value_search) {
-#      iterate.each_pair do |k, v|
-#        if v.class == Hash
-#          flag = my_lambda.call(v, key_search, value_search)
-#          return flag if flag == true
-#          next
-#        end
-#        return my_lambda.call(v, key_search, value_search) if v.class == Hash
-#        if key_search == k
-#          return true if v =~ /#{value_search}/
-#        end
-#      end
-#    }
-#    str = ""
-#    ch_dir = "cd #{DirManager.get_framework_path}"
-#    branch = `#{ch_dir} ; git branch --show-current`
-#    `#{ch_dir} ; git rev-list #{branch}`.split.each do |hash|
-#        header_message = `#{ch_dir} ; git log -n 1 --pretty=format:%s #{hash}`
-#
-#        find_commit = "#{ch_dir} ; git log #{hash} -n 1"
-#        if is_valid_json(header_message)
-#          flag = []
-#          json = JSON.parse(header_message)
-#          search_args.each_pair { |key_search, value_search| flag.append(my_lambda.call(json, key_search, value_search)) }
-#          system("#{find_commit}") if search_args.length == flag.select { |i| i == true }.length
-#        else
-#          system find_commit if header_message =~ /#{value_search}/
-#        end
-#    end
-#  end
-
-#  def self.is_valid_json(message)
-#    begin
-#      JSON.parse(message)
-#      return true
-#    rescue JSON::ParserError => e
-#      return false
-#    else
-#      abort("debug")
-#    end
-#  end
-  
   def self.create_env()
     abort("Must initialize Git Repo: bsf git init")
   end
@@ -159,21 +114,6 @@ class GitManager
         end
       end
       r
-    end 
+    end
   end
-#  def self.diff(hash1, hash2)
-#    hash2 = "HEAD" if hash2.nil?
-#    to_execute = "cd #{$PWD}/#{$FRAMEWORK} ; diff -w <(git rev-list --max-count=1 --format=%B #{hash1}) <(git rev-list --max-count=1 --format=%B #{hash2})"
-#    executing(to_execute)
-#  end
-
-  # DEPRECATED
-#  def check_up_to_date(repo_dir)
-#    output_exec = `cd #{repo_dir} ;
-#                  git remote update ;
-#                  git status -uno`
-#    puts output_exec
-#
-#    return output_exec =~ /up\sto\sdate/
-#  end
 end

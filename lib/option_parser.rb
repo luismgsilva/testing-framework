@@ -29,7 +29,6 @@ module OptionParser
       isFinal = false
       condition.split(" ").each do |c|
           count = 1
-          # eg. c == "compare" ; args[i] == "compare"
           i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i])
 
           if args[i] =~ /.=./ and c =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
@@ -98,62 +97,6 @@ module OptionParser
 
       return opts
     end
-    # def self.match_condition(condition, args)
-    #   opts = {}
-    #   i = 0
-    #   isFinal = false
-    #   condition.split(" ").each do |c|
-    #       count = 1
-    #       # eg. c == "compare" ; args[i] == "compare"
-    #       i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i])
-    #       # eg. c == "PREFIX=path/to/prefix"
-    #       if args[i] =~ /.=./ and c =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
-    #           tmp1 = $1
-    #           tmp2 = $2
-    #           if args[i] =~ (/^([^}]+)=([^}]+)$/)
-    #             opts[tmp1] = $1
-    #             opts[tmp2] = $2
-    #           end
-
-    #       # Options
-    #       elsif(c =~ /^{([^}]+)}$/)
-    #           tmp  = $1
-    #           if tmp =~ /^-([^}]+)$/
-    #             if args[i] == tmp
-    #               opts[$1] = {}
-    #             else
-    #               count = 0
-    #             end
-
-    #           elsif tmp =~ /^\$<([A-Za-z0-9_]+)>$/ and !args[i].nil?
-    #             opts[$1] = args[i..-1]
-    #             isFinal = true
-
-    #           elsif tmp =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?
-    #               opts[$1] = args[i]
-    #           end
-
-    #       elsif c =~ /^\$<([A-Za-z0-9_]+)>$/ and !args[i].nil? #
-    #         opts[$1] = args[i..-1]
-    #         isFinal = true
-
-    #       elsif(c =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?)
-    #           opts[$1] = args[i]
-    #       else
-    #           opts = nil
-    #           break;
-    #       end
-
-    #       i += count
-
-    #   end
-
-    #   opts = nil if i < args.count and !isFinal
-
-    #   opts.transform_keys!(&:to_sym) if !opts.nil?
-
-    #   return opts
-    # end
 
     def match_conditions(args)
       @conditions.each_pair do |condition, action|

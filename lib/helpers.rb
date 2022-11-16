@@ -1,7 +1,6 @@
 class Helper
 
   def self.get_status(status_path_file = DirManager.get_status_file)
-#    p status_path_file
     raise("StatusFileDoesNotExists") unless File.exists?(status_path_file)
     return JSON.parse(File.read(status_path_file))
   end
@@ -70,18 +69,14 @@ class Helper
 
   def self.lock
     lock_file = DirManager.get_lock_file
-
     if File.exists? lock_file
       raise "CouldNotGetLockException" if (`uptime -s` == `cat #{lock_file}`)
       unlock()
     end
-
-#    puts "DEBUG: LOCKING"
     system "uptime -s > #{lock_file}"
   end
 
   def self.unlock
-#    puts "DEBUG: UNLOCKING"
     lock_file = DirManager.get_lock_file
     return system("rm -rf #{lock_file}") if File.exists? lock_file
   end

@@ -19,8 +19,6 @@ class Manager
     @@instance = @@instance || Manager.new
     return @@instance
   end
-  def initialize()
-  end
   
   def save_config(dir_to)
     Config.instance.save_config(dir_to)
@@ -50,7 +48,6 @@ class Manager
   end
 
   def get_commit_data(root, current_commit_id = nil)
-
     return { prev_commit_id: "first" } if !File.exists? "#{DirManager.get_framework_path}/.git"
     return { prev_commit_id: `cd #{root} ; git rev-parse HEAD`.chomp } if current_commit_id.nil?
 
@@ -66,13 +63,14 @@ class Manager
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
     abort("WARMING: Report not supported") if Config.instance.report(target).nil? #
 
+
     commit_id = nil
-    while options.include? "-h"
-      tmp = options.shift
-      if tmp =~ /-h/
-        commit_id = options.shift
-      end
-    end if options
+    if options and options.include? "-h"
+      i = options.find_index("-h")
+      commit_id = options[i+1]
+      options.delete_at(i)
+      options.delete_at(i+1)
+    end
 
     to_print = ""
     options = options || ""
@@ -86,7 +84,6 @@ class Manager
       dir = DirManager.get_framework_path()
       file = { hash: "LOCAL", path: dir, }.merge(get_commit_data(dir))
     end
-
 
     if !File.exists?("#{dir}/tasks/#{target}/.previd")
       return "no"
@@ -118,15 +115,15 @@ class Manager
     opts = options.clone
     files = {}
 
-    tmp = []
-    opts.shift.split(":").each do |hash|
+    tmp = opts.shift.split(":")
+    tmp.each do |hash|
       abort("ERROR: #{hash} not valid") if check_commit_id(hash)
-      tmp.push(hash)
     end
+
     tmp.each do |hash|
       dir = DirManager.get_compare_dir(hash)
       GitManager.create_worktree(hash, dir)
-      files[hash] = { path: dir, }.merge(get_commit_data(dir, hash))
+      files[hash] = { path: dir }.merge(get_commit_data(dir, hash))
     end
 
     if files.length == 1
@@ -142,7 +139,6 @@ class Manager
         next
       end
       previd = File.read("#{v[:path]}/tasks/#{target}/.previd").chomp
-      # to_compare = (previd == 'first') ? v[:commit_ids][0] == `cd #{v[:path]} ; git rev-parse #{k}`.chomp : previd == v[:prev_commit_id]
       to_compare = previd == v[:prev_commit_id]
       opts += (to_compare) ? " -h #{v[:path]}/tasks/#{target}/:#{k}" : " -h :#{k}"
     end
@@ -167,21 +163,17 @@ class Manager
     abort("WARMING: Comparator agregator not supported") if Config.instance.comparator_agregator().nil?
     opts = [options[0], "-o", "json"]
     agregator = {}
-    tasks = Config.instance.tasks.keys
-    tasks.each do |task|
+    Config.instance.tasks.keys.each do |task|
       agregator.merge!(JSON.parse(compare(task, opts)))
     end
 
-    tmp = []
-    options.shift.split(":").each { |hash| tmp.push(hash) }
-
+    tmp = options.shift.split(":")
     tmp.push("LOCAL") if tmp.length == 1
-
     options = options.join(" ")
-    tmp.each { |h| options += " -h _:#{h}" }
+    tmp.each { |h| options += " -h :#{h}" }
 
-    tmpfile = `mktemp`
-    system("echo '#{JSON.pretty_generate(agregator)}' > #{tmpfile}")
+    tmpfile = `mktemp`.chomp
+    File.write(tmpfile, JSON.pretty_generate(agregator))
     VarManager.instance.set_internal("@OPTIONS", "#{options}")
     VarManager.instance.set_internal("@AGREGATOR", tmpfile) #
 
@@ -193,9 +185,9 @@ class Manager
   def ls(task, commit_id)
     abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
     abort("ERROR: Task #{task} not found") if !Config.instance.tasks.keys.include? task.to_sym
-    tmp_dir = DirManager.get_worktree_dir()
     return `ls #{DirManager.get_persistent_ws_path}/#{task}` if !commit_id
 
+    tmp_dir = DirManager.get_worktree_dir()
     GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
     to_print = `ls #{tmp_dir}/tasks/#{task}`
     GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
@@ -205,9 +197,9 @@ class Manager
   def cat(task, commit_id, file)
     abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
     abort("ERROR: Task #{task} not found") if !Config.instance.tasks.keys.include? task.to_sym
-    tmp_dir = DirManager.get_worktree_dir()
     return `cat #{DirManager.get_persistent_ws_path}/#{task}/#{file}` if !commit_id
 
+    tmp_dir = DirManager.get_worktree_dir()
     GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
     to_print = `cat #{tmp_dir}/tasks/#{task}/#{file}`
     GitManager.internal_git("worktree remove #{tmp_dir}")
@@ -216,26 +208,24 @@ class Manager
 
   def publish()
     persistent_ws = DirManager.get_persistent_ws_path
-
     commit_msg_hash = {}
     status = JSON.parse(File.read(DirManager.get_status_file))
 
     Config.instance.tasks.keys.select { |task| status[task.to_s] == 0 }.sort.each do |task|
-      
       to_execute = Config.instance.publish_header(task)
-      
       Helper.set_internal_vars(task)
 
       to_execute = VarManager.instance.prepare_data(to_execute)
       place_holder = {}
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
-        abort("ERROR: #{execute}") if !system execute
-        commit_msg = JSON.parse(`#{execute}`, symbolize_names: true)
+        output = `#{execute}`
+        abort("ERROR: #{execute}") if !$?.success?
+        commit_msg = JSON.parse(output, symbolize_names: true)
         place_holder.merge!(commit_msg)
       end
       
-      commit_msg_hash.store(task, place_holder)
+      commit_msg_hash[task] = place_holder
     end
     GitManager.publish(JSON.pretty_generate(commit_msg_hash))
   end
@@ -261,7 +251,7 @@ class Manager
       1 => "Failed"
     }
     begin
-      if !commit_id.nil?
+      if commit_id
         worktree_dir = DirManager.get_worktree_dir()
         GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
         status = Helper.get_status("#{worktree_dir}/status.json")
@@ -269,7 +259,7 @@ class Manager
         status = Helper.get_status
       end
       status.each_pair { |task, result| to_print += "#{mapping[result]}: #{task}\n" }
-      GitManager.internal_git("worktree remove #{worktree_dir}") if !commit_id.nil?
+      GitManager.internal_git("worktree remove #{worktree_dir}") if commit_id
     rescue Exception => e
       abort("ERROR: Nothing executed yet") if e.message == "StatusFileDoesNotExists"
     end
@@ -277,24 +267,21 @@ class Manager
   end
 
   def log(task, commit_id, is_tail = nil)
-    to_print = ""
-    worktree_dir = ""
-    if !commit_id.nil?
+    if commit_id
       worktree_dir = DirManager.get_worktree_dir()
       GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
       log_file = DirManager.get_log_file_hash(task)
     else
       log_file = DirManager.get_log_file(task)
     end
-    puts log_file
 
     abort("ERROR: Tool not found") if !File.exists? log_file
-    if !is_tail.nil?
+    if is_tail
       system "tail -f #{log_file}"
     else
       to_print = `cat #{log_file}`
     end
-    GitManager.internal_git("worktree remove #{worktree_dir}") if !commit_id.nil?
+    GitManager.internal_git("worktree remove #{worktree_dir}") if commit_id
     return to_print
   end
 
