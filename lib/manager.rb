@@ -108,6 +108,7 @@ class Manager
 
 
   def compare(target, options)
+    abort("ERROR: Target not specified") if target.nil?
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
     abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
     to_print = ""
@@ -212,7 +213,9 @@ class Manager
     status = JSON.parse(File.read(DirManager.get_status_file))
 
     Config.instance.tasks.keys.select { |task| status[task.to_s] == 0 }.sort.each do |task|
+
       to_execute = Config.instance.publish_header(task)
+      next if to_execute.nil?
       Helper.set_internal_vars(task)
 
       to_execute = VarManager.instance.prepare_data(to_execute)
