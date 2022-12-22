@@ -91,7 +91,6 @@ class GitManager
     repo = opts[:repo]
     branch = opts[:branch]
     path_to_clone = DirManager.get_source_path(name)
-    
     return if DirManager.directory_exists(path_to_clone)
 
     is_branch = (branch.nil?) ? "" : "--branch #{branch}"

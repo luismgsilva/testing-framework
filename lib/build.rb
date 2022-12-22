@@ -50,33 +50,46 @@ class Build
     DirManager.create_dir(DirManager.get_logs_path)
 
     pre_condition(data, skip_flag)
-    execute(data)
+    parallel_verifier(data)
   end
 
-  def self.execute(data)
-    data.each do |task, command|
-      Helper.set_internal_vars(task)
+  def self.execute(task, command)
+    Helper.set_internal_vars(task)
 
-      to_execute = VarManager.instance.prepare_data(command[:execute])
-      workspace_dir = VarManager.instance.get("@WORKSPACE")
-      DirManager.create_dir(workspace_dir)
-      DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
+    to_execute = VarManager.instance.prepare_data(command[:execute])
+    workspace_dir = VarManager.instance.get("@WORKSPACE")
+    DirManager.create_dir(workspace_dir)
+    DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
 
-      out = File.open(DirManager.get_log_file(task), "w")
-      puts "Executing #{task}.."
-      status = nil
-      to_execute = [to_execute] if to_execute.class == String
-      to_execute.each do |execute|
-        status = system "echo 'BSF Executing: #{execute}' ;
-                         cd #{workspace_dir} ;
-                         #{execute}", out: out, err: out
-        break if !status
-      end
-
-      out.close()
-
-      Helper.set_status(status, task)
-      Helper.set_previd(status, task)
+    out = File.open(DirManager.get_log_file(task), "w")
+    puts "Executing #{task}.."
+    status = nil
+    to_execute = [to_execute] if to_execute.class == String
+    to_execute.each do |execute|
+      status = system "echo 'BSF Executing: #{execute}' ;
+                       cd #{workspace_dir} ;
+                       #{execute}", out: out, err: out
+      break if !status
     end
+
+    out.close()
+
+    Helper.set_status(status, task)
+    Helper.set_previd(status, task)
+  end
+
+  def self.parallel_verifier(data)
+    parallel = false
+    task_list = []
+    data.each do |task, command|
+      if parallel
+        todo = Thread.new(task) { |this| tmp(task, command) }
+        task_list << todo
+      else
+        tmp(task, command)
+      end
+    end
+
+    task_list.each { |task| task.join } if parallel
   end
 end

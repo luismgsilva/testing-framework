@@ -28,6 +28,22 @@ class Helper
   def self.set_status(result, task)
     data = "{}"
     file = DirManager.get_status_file
+
+    if(File.exists?(file))
+      File.open(file, "a") do |f|
+        f.flock(File::LOCK_EX)
+        status = JSON.parse(data, symbolize_names: true)
+        status[task] = result && 0 || 1
+        DirManager.create_dir_for_file(file)
+        f.puts JSON.pretty_generate(status)
+      end
+    end
+    puts (result) ? "Passed" : "Failed"
+  end
+
+  def self.set_status(result, task)
+    data = "{}"
+    file = DirManager.get_status_file
     data = File.read(file) if(File.exists?(file))
     status = JSON.parse(data, symbolize_names: true)
     status[task] = result && 0 || 1
@@ -35,6 +51,7 @@ class Helper
     File.write(file, JSON.pretty_generate(status))
     puts (result) ? "Passed" : "Failed"
   end
+
 
   def self.set_internal_vars(task)
     VarManager.instance.set_internal("@SOURCE", "#{DirManager.pwd}/sources")

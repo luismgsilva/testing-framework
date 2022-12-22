@@ -22,7 +22,7 @@ class Main
     rescue SignalException
       Helper.lock_mg(:UNLOCK, args)
     rescue Exception => e
-      # puts e
+      puts e
       Helper.lock_mg(:UNLOCK, args)
     rescue Interrupt
       Helper.lock_mg(:UNLOCK, args)

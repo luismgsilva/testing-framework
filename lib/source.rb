@@ -12,14 +12,14 @@ class Source
         raise("NotRegisteredSourceException") if !(input_sources - config_sources.keys).empty?
         config_sources = config_sources.slice(*input_sources)
       end
-      raise("NothingToCloneException") if input_sources.empty?
+      raise("NothingToCloneException") if config_sources.empty?
       
       config_sources.each_pair do |k, v|
         opts = v
         opts[:name] = k
         GitManager.get_clone(opts)
       end
-      
+
       GitManager.instance.set_git(get_sources_config[name.to_sym]) 
       GitManager.instance.get_clone 
     rescue Exception => e
