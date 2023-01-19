@@ -87,14 +87,12 @@ class GitManager
   end
 
   def self.get_clone(opts)
-    name = opts[:name]
-    repo = opts[:repo]
-    branch = opts[:branch]
-    path_to_clone = DirManager.get_source_path(name)
+    path_to_clone = DirManager.get_source_path(opts[:name])
     return if DirManager.directory_exists(path_to_clone)
 
-    is_branch = (branch.nil?) ? "" : "--branch #{branch}"
-    to_execute = "git clone #{is_branch} #{repo} #{path_to_clone}"
+    to_execute = "git clone #{opts[:repo]} #{path_to_clone}"
+    to_execute += " --branch #{opts[:branch]}" if opts[:branch]
+    to_execute += " --depth 1 --single-branch" if opts[:single]
 
     system (to_execute)
   end

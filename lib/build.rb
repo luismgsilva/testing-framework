@@ -83,10 +83,10 @@ class Build
     task_list = []
     data.each do |task, command|
       if parallel
-        todo = Thread.new(task) { |this| tmp(task, command) }
+        todo = Thread.new(task) { |this| execute(task, command) }
         task_list << todo
       else
-        tmp(task, command)
+        execute(task, command)
       end
     end
 

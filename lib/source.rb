@@ -4,7 +4,7 @@ class Source
     return Config.instance.sources
   end
 
-  def self.get_sources(input_sources = nil)
+  def self.get_sources(input_sources = nil, single)
     begin
       config_sources = get_sources_config
       if input_sources
@@ -13,11 +13,12 @@ class Source
         config_sources = config_sources.slice(*input_sources)
       end
       raise("NothingToCloneException") if config_sources.empty?
-      
+
       config_sources.each_pair do |k, v|
-        opts = v
-        opts[:name] = k
-        GitManager.get_clone(opts)
+        source = v
+        source[:name] = k
+        source[:single] = true if single
+        GitManager.get_clone(source)
       end
 
       GitManager.instance.set_git(get_sources_config[name.to_sym]) 

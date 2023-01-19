@@ -33,7 +33,7 @@ class Main
 
   def option_parser_conditions_initializer(opt)
 
-    opt.condition("sources get ${name}")                    { |opts| Source.get_sources(opts[:name]) }
+    opt.condition("sources get {-s} ${name}")               { |opts| Source.get_sources(opts[:name], opts[:s]) }
     opt.condition("sources delete <name>")                  { |opts| Source.delete_sources(opts[:name]) }
     opt.condition("sources list")                           { |opts| Source.list_sources() }
     opt.condition("sources show")                           { |opts| Source.show_sources() }
@@ -100,7 +100,7 @@ Work with lists
     vars                               Lists all Input Variables
 
 Work with the Git Repositories
-    sources get ${name}                Clone a new Source to the framework environment
+    sources get {-s} ${name}           Clone a new Source to the framework environment (-s for single branch)
     sources delete <name>              Delete a Source from the framework environment
     sources list                       List all the Sources in the config file
     sources show                       Show all cloned the Sources in the framework environment
