@@ -5,6 +5,7 @@ class Source
   end
 
   def self.get_sources(input_sources = nil, single)
+  input_sources = [input_sources] if input_sources.class == String
     begin
       config_sources = get_sources_config
       if input_sources
@@ -22,9 +23,9 @@ class Source
       end
 
       GitManager.instance.set_git(get_sources_config[name.to_sym]) 
-      GitManager.instance.get_clone 
+      GitManager.instance.get_clone
     rescue Exception => e
-      abort("ERROR: Nothing to clone.") if e.message == "NothingToCloneException" 
+      abort("ERROR: Nothing to clone.") if e.message == "NothingToCloneException"
       abort("ERROR: Not a registered Git Repo") if e.message == "NotRegisteredSourceException"
     end
   end
