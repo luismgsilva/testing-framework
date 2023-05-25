@@ -2,7 +2,6 @@ require_relative './helpers.rb'
 
 class Build
 
-
   def self.filter_task(data, to_filter)
     to_filter.map! &:to_sym
     res =  to_filter - data.keys
@@ -11,36 +10,33 @@ class Build
   end
 
   def self.pre_condition(data, skip_flag)
-    data_cloned = data.clone
-    str = ""
-    status = false
-    data_cloned.each_pair do |task, command|
+    failed_tasks = []
+    data.each_pair do |task, command|
       next if command[:pre_condition].nil?
       Helper.set_internal_vars(task)
       to_execute = VarManager.instance.prepare_data(command[:pre_condition])
 
       out = File.open(DirManager.get_log_file(task), "w")
       to_execute = [to_execute] if to_execute.class == String
-      placeholder = ""
       to_execute.each do |execute|
-        status = system("echo 'BSF Executing: #{execute}' ; #{execute}", out: out, err: out)
-        if !status
-          data.delete(task)
-          placeholder = execute
-          break
-        end
+        system("echo 'BSF Executing: #{execute}' ; #{execute}", out: out, err: out)
+        failed_tasks << { task: task, pre_condition: execute } if !$?.success?
       end
-      str += status ? "Passed Pre-Condition: #{task}\n" :
-                      "Failed Pre-Condition: #{task}\n\sCommand: #{placeholder}\n"
     end
-    puts str
-    exit -1 if data.empty?
-    return if skip_flag
-    return if str !~ /^Failed/
-    begin
-      Helper.input_user("Contiue? [y/n]")
-    rescue Exception => e
-      abort("Process Terminated By User") if e.message == "ProcessTerminatedByUserException"
+
+    if failed_tasks.any?
+      data.select! { |task, command| command[:pre_condition].nil? || !failed_tasks.any? { |failed| failed[:task] == task } }
+      return if skip_flag
+      puts "One or more pre-conditions have failed:"
+      failed_tasks.each do |tasks|
+        puts "- #{tasks[:task]}: #{tasks[:pre_condition]}"
+      end
+      exit -1 if data.empty?
+      begin
+        Helper.input_user("Do you want to contiue? [y/n]")
+      rescue Exception => e
+        abort("Process Terminated By User") if e.message == "ProcessTerminatedByUserException"
+      end
     end
   end
 
@@ -78,8 +74,9 @@ class Build
     Helper.set_previd(status, task)
   end
 
+
   def self.parallel_verifier(data)
-    parallel = false
+    parallel = true
     task_list = []
     data.each do |task, command|
       if parallel

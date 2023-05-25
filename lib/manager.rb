@@ -110,7 +110,8 @@ class Manager
   def compare(target, options)
     abort("ERROR: Target not specified") if target.nil?
     abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
-    abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
+    # abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
+    return "no" if Config.instance.comparator(target).nil?
     to_print = ""
     options = options || ""
     opts = options.clone
@@ -165,7 +166,13 @@ class Manager
     opts = [options[0], "-o", "json"]
     agregator = {}
     Config.instance.tasks.keys.each do |task|
-      agregator.merge!(JSON.parse(compare(task, opts)))
+      result = compare(task, opts)
+      if result == "no"
+        next
+      end
+      agregator.merge!(JSON.parse(result))
+
+      # agregator.merge!(JSON.parse(compare(task, opts)))
     end
 
     tmp = options.shift.split(":")

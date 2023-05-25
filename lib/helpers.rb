@@ -72,7 +72,7 @@ class Helper
   end
 
   def self.lock_mg(type, args)
-    return if !(%w[execute set git sources clean compare publish] & args).any?
+    return if !(%w[execute set git sources clean publish] & args).any?
     if type == :LOCK
       begin
         lock()

@@ -21,13 +21,17 @@ class Main
       Helper.lock_mg(:UNLOCK, args)
     rescue SignalException
       Helper.lock_mg(:UNLOCK, args)
+      exit -1
     rescue Exception => e
       puts e
       Helper.lock_mg(:UNLOCK, args)
+      exit -1
     rescue Interrupt
       Helper.lock_mg(:UNLOCK, args)
+      exit -1
     rescue EPIPE
       Helper.lock_mg(:UNLOCK, args)
+      exit -1
     end
   end
 
@@ -39,7 +43,7 @@ class Main
     opt.condition("sources show")                           { |opts| Source.show_sources() }
 
     opt.condition("saveconfig <pathtosave>")                { |opts| Config.save_config(opts[:pathtosave]) }
-    opt.condition("clone <gitrepo> <dir>")                        { |opts| GitManager.get_clone_framework(opts[:gitrepo], opts[:dir]) }
+    opt.condition("clone <gitrepo> <dir>")                  { |opts| GitManager.get_clone_framework(opts[:gitrepo], opts[:dir]) }
 
     opt.condition("init <folderpath>")                      { |opts| Config.init_bsf(opts[:folderpath]) }
 
