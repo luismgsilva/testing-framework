@@ -1,11 +1,8 @@
 require 'sinatra/base'
 
-
-
 class WebServer < Sinatra::Base 
 
   set :default_content_type, 'application/json'
-
 
   def handler(message)
     data = JSON.parse(request.body.read, symbolize_names: true)
@@ -38,18 +35,11 @@ class WebServer < Sinatra::Base
       end
     end if opts
 
-
-
     post "/github" do
       data = JSON.parse(request.body.read, symbolize_names: true)
       system("echo '#{JSON.pretty_generate(data)}' > /tmp/github")
     end
    
-    # get "/compare/:task/:hash1/:hash2" do
-    #   Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
-    # end
-
-
   # GET
     # `bsf sources list`
     get "/sources/list" do
@@ -113,19 +103,8 @@ class WebServer < Sinatra::Base
     # `bsf report <task> $<opts>`
     get "/report/:task/:opts" do
     end
-    
+
   # POST
-    # post "/compare" do
-    #   request.body.rewind
-    #   data = JSON.parse(request.body.read, symbolize_names: true)
-    #   args = ["#{data[:hash1]}:#{data[:hash2]}", "-o json"]
-
-    #   content_type :json
-    #   JSON.parse(Manager.instance.compare(data[:task], args)).to_json
-    # end
-
-
-
     # `bsf sources get ${sources}`
     post "/sources" do
       handler("Repository cloned successfully") do |data|
@@ -176,37 +155,6 @@ class WebServer < Sinatra::Base
     post "/clean" do
     end
 
-
-    # get "/compare/:task/:hash1/:hash2" do
-    #   # Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
-    #   args = ["#{params[:hash1]}:#{params[:hash2]}"]
-    #   Manager.instance.compare(params[:task], args)
-    # end
-    # get "/compare/:task/:hash1/:hash2/:opts" do
-    #   # Manager.instance.compare(params[:hash1], params[:hash2], nil, params[:task])
-    #   args = ["#{params[:hash1]}:#{params[:hash2]}", params[:opts]]
-    #   Manager.instance.compare(params[:task], args)
-    # end
-
-
-    # get "/ls/:task/:hash" do
-    #   Manager.instance.ls(params["task"], params["hash"])
-    # end
-    # get "/cat/:task/:hash/:file" do
-    #   Manager.instance.cat(params[:task], params[:hash], params[:file])
-    # end
-    # get "/status/:hash" do
-    #   Manager.instance.status(params[:hash])
-    # end
-    # get "/log/:task/:hash" do
-    #   Manager.instance.log(params[:task], params[:hash])
-    # end
-    # get "/diff/:hash1/:hash2" do
-    #   Manager.instance.diff(params[:hash1], params[:hash2])
-    # end
-    # get "/search/:args" do
-    #   GitManager.search_log(params[:args])
-    # end
     run!
   end
 end
