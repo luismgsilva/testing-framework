@@ -82,7 +82,7 @@ class Main
     opt.condition_option("git",             { name: "gitcommand", mandatory: true, multiple: true } )
     opt.condition_action("git")             { |opts| GitManager.internal_git(opts[:gitcommand]) }
     # search  $<options>
-    opt.condition_option("search",             { name: "options", mandatory: true, multiple: true } )
+    opt.condition_option("search",          { name: "options", mandatory: true, multiple: true } )
     opt.condition_action("search")          { |opts| puts GitManager.search_log(opts[:options]) }
     # compare
     opt.condition_option("compare",         { name: "task", mandatory: true } )
@@ -109,16 +109,16 @@ class Main
     #clean
     opt.condition_option("clean",           { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean",           { name: "task", multiple: true } )
-    opt.condition_action("clean")           { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
+    opt.condition_action("clean")           { |opts| Manager.instance.clean(opts[:task], opts[:confirm]) }
     # ls
     opt.condition_option("ls",              { name: "task", mandatory: true } )
     opt.condition_option("ls",              { name: "hash" } )
-    opt.condition_action("ls")              { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
+    opt.condition_action("ls")              { |opts| puts Manager.instance.ls(opts[:task], opts[:hash]) }
     # cat
     opt.condition_option("cat",             { name: "task", mandatory: true } )
     opt.condition_option("cat",             { name: "file", mandatory: true } )
     opt.condition_option("cat",             { name: "hash" } )
-    opt.condition_action("cat")             { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
+    opt.condition_action("cat")             { |opts| puts Manager.instance.cat(opts[:task], opts[:hash], opts[:file]) }
 
     opt.parse(ARGV)
 
