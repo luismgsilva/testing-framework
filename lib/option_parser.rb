@@ -5,118 +5,72 @@ module OptionParser
       @conditions = {}
       @default = nil
     end
-    def condition(pattern, &action)
-      @conditions[pattern] = action
+
+    def condition_option(pattern, option)
+      @conditions[pattern] ||= {}
+      @conditions[pattern][:options] ||= []
+      @conditions[pattern][:options] << option
+    end
+
+    def condition_action(pattern, &action)
+      @conditions[pattern] ||= {}
+      @conditions[pattern][:action] = action
+    end
+
+    def condition_help(pattern, string)
+      @conditions[pattern] ||= {}
+      @conditions[pattern][:help] = string
     end
 
     def default(&action)
       @default_action = action
     end
 
-    def self.equals_method(args)
-      config = {}
-      args.each do |arg|
-        if arg =~ /^([^}]+)=([^}]+)$/
-          config[$1] = $2
-        end
-      end
-      return config
+    def error(message, rules)
+      puts message
+      @default_action.call() if (@default_action)
+      exit -1
     end
 
-    def self.match_condition(condition, args)
-      opts = {}
-      i = 0
-      isFinal = false
-      condition.split(" ").each do |c|
-          count = 1
-          i += count and next if (c =~ /^-?[A-Za-z0-9_]+$/ && c == args[i])
-
-          if args[i] =~ /.=./ and c =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
-              tmp1 = $1
-              tmp2 = $2
-              if args[i] =~ (/^([^}]+)=([^}]+)$/)
-                opts[tmp1] = $1
-                opts[tmp2] = $2
-                isFinal = true
-              end
-
-          elsif c =~ /^\$([{}<>=A-Za-z0-9_]+)$/
-            tmp = $1
-            if args[i] =~ /.=./ and tmp =~ /^<([^}]+)>=<([^}]+)>$/ and !args[i].nil?
-              config = equals_method(args)
-              opts[:hash] = config
-              isFinal = true
-            elsif tmp =~ /^<([A-Za-z0-9_]+)>$/
-              if !args[i].nil?
-                opts[$1] = args[i..-1]
-                isFinal = true
-              elsif args[i].nil
-                opts = nil
-                break
-              end
-            elsif tmp =~ /^{([<>=A-Za-z0-9_]+)}$/ and !args[i].nil?
-              tmp = $1
-              if args[i] =~ /.=./ and tmp =~ /^<([^}]+)>=<([^}]+)>$/
-                config = equals_method(args[i..-1])
-                opts[:hash] = config
-                isFinal = true
-              else
-                opts[tmp] = args[i..-1]
-                isFinal = true
-              end
-            end
-
-          elsif(c =~ /^<([A-Za-z0-9_]+)>$/ and !args[i].nil?)
-            opts[$1] = args[i]
-
-          elsif (c =~ /^{([^}]+)}$/)
-            tmp = $1
-            if tmp =~ /^-([A-Za-z0-9_]+)$/
-              if args[i] == tmp
-                if $1 == "o"
-                  opts[$1] = args[i+1]
-                  count += 1
-                else
-                  opts[$1] = {}
-                end
-              else
-                count = 0
-              end
-            elsif tmp =~ /^([A-Za-z0-9_]+)$/ and !args[i].nil?
-              opts[tmp] = args[i]
-            end
-          else
-              opts = nil
-              break;
-          end
-          i += count
-      end
-
-      opts = nil if i < args.count and !isFinal
-      opts.transform_keys!(&:to_sym) if !opts.nil?
-
-      return opts
-    end
-
-    def match_conditions(args)
-      @conditions.each_pair do |condition, action|
-        opts = OptionParser.match_condition(condition, args)
-        if(opts != nil)
-          ret = {action: action, opts: opts}
-          return ret
-        end
-      end
-      return nil
-    end
 
     def parse(args)
-      condition = match_conditions(args)
-      if(condition)
-        condition[:action].call(condition[:opts])
+      rule = ARGV.shift
+      rule = "#{rule} #{ARGV.shift}" if rule =~ /sources/
+      options = {}
+      if rule && @conditions[rule]
+        @conditions[rule][:options].each do |o|
+          short = o[:short] || "--#{o[:name]}"
+          if o[:type] == :equal
+            if ARGV[0] =~ (/^([^}]+)=([^}]+)$/)
+              options[o[:name].to_sym] = [$1, $2]
+            elsif o[:mandatory]
+              error("Error: missing argument #{o[:name]}", @conditions)
+            end
+          elsif o[:type] == :option
+            options[o[:name].to_sym] = true if ARGV.include?(o[:short]) || ARGV.include?("--#{o[:name]}")
+            ARGV.delete_if { |op| op == o[:short] || op ==  "--#{o[:name]}"}
+          elsif o[:multiple]
+            value = []
+            while !ARGV.empty?
+              break if o[:type] != :args && ARGV[0].start_with?("-")
+              value << ARGV.shift
+            end
+            error("Error: missing argument #{o[:name]}", @conditions) if value.empty? && o[:mandatory]
+            options[o[:name].to_sym] = value if value.any?
+          elsif !o[:multiple]
+            value = ARGV.shift if !ARGV.empty? && !ARGV.first.start_with?("-")
+            error("Error: missing argument #{o[:name]}", @conditions) if value.nil? && o[:mandatory]
+            options[o[:name].to_sym] = value
+          end
+        end if @conditions[rule][:options]
       else
-        @default_action.call() if (@default_action)
-        exit -1
+        error("Error: invalid command #{rule}", @conditions)
       end
+
+      puts "Rule: #{rule}"
+      puts "Options: #{options}"
+
+      @conditions[rule][:action].call(options)
     end
   end
 end
