@@ -42,63 +42,71 @@ class Main
     opt.condition_action("sources get")  { |opts| puts "#{opts[:task]}, #{opts[:single_branch]}" }
     # sources delete
     opt.condition_option("sources delete", { name: "task", mandatory: true } )
-    opt.condition_action("sources delete") { |opts| puts opts }
+    opt.condition_action("sources delete") { |opts| Source.delete_sources(opts[:task]) }
     # sources list
-    opt.condition_action("sources list") { |opts| puts opts }
+    opt.condition_action("sources list") { |opts| Source.list_sources() }
     # sources show
-    opt.condition_action("sources show") { |opts| puts opts }
+    opt.condition_action("sources show") { |opts| Source.show_sources() }
     # saveconfig
     opt.condition_option("saveconfig", { name: "pathtosave", mandatory: true } )
-    opt.condition_action("saveconfig") { |opts| puts opts }
+    opt.condition_action("saveconfig") { |opts| Config.save_config(opts[:pathtosave]) }
     # clone
     opt.condition_help("clone", "Clone an existing Framework Environment to a directory")
-    opt.condition_option("clone", { name: "git_repo", mandatory: true } )
+    opt.condition_option("clone", { name: "gitrepo", mandatory: true } )
     opt.condition_option("clone", { name: "directory", mandatory: true } )
-    opt.condition_action("clone") { |opts| puts opts }
+    opt.condition_action("clone") { |opts| GitManager.get_clone_framework(opts[:gitrepo], opts[:directory]) }
     # init
     opt.condition_help("init", "Create a new Framework Environment")
-    opt.condition_option("init", { name: "folder_path", mandatory: true } )
-    opt.condition_action("init") { |opts| puts opts }
+    opt.condition_option("init", { name: "folderpath", mandatory: true } )
+    opt.condition_action("init") { |opts| Config.init_bsf(opts[:folderpath]) }
     # vars
-    opt.condition_action("vars") { |opts| puts opts }
+    opt.condition_action("vars") { |opts| VarManager.instance.var_list() }
     # tasks
     opt.condition_help("tasks", "Lists all the tasks and its description")
-    opt.condition_action("tasks") { |opts| puts opts }
+    opt.condition_action("tasks") { |opts| puts Manager.instance.tasks_list() }
     # set
     opt.condition_option("set", { name: "var=value", type: :equal, mandatory: true } )
-    opt.condition_action("set") { |opts| puts opts }
+    opt.condition_action("set") { |opts| VarManager.instance.set(opts[:var=value][0], opts[:var=value][1]); VarManager.instance.save }
     # execute
     opt.condition_option("execute", { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute", { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute", { name: "task", mandatory: true, multiple: true } )
-    opt.condition_action("execute") { |opts| puts opts }
+    opt.condition_action("execute") { |opts| Manager.instance.build(opts[:task], opts[:confirm]) }
     # compare
     opt.condition_option("compare", { name: "task", mandatory: true } )
     opt.condition_option("compare", { name: "args", mandatory: true, multiple: true, type: :args} )
-    opt.condition_action("compare") { |opts| puts opts }
+    opt.condition_action("compare") { |opts| puts Manager.instance.compare(opts[:task], opts[:args]) }
     # compare all
     opt.condition_option("compareall", { name: "args", mandatory: true, multiple: true, type: :args} )
-    opt.condition_action("compareall") { |opts| puts opts }
+    opt.condition_action("compareall") { |opts| puts Manager.instance.agregator(opts[:args]) }
+    # report
+    opt.condition_option("report", { name: "task", mandatory: true } )
+    opt.condition_option("report", { name: "args", multiple: true, type: :args} )
+    opt.condition_action("report") { |opts| puts Manager.instance.report(opts[:task], opts[:args]) }
+    # server
+    opt.condition_option("server", { name: "options", multiple: true, type: :args} )
+    opt.condition_action("server")  { |opts| WebServer.execute(opts[:options]) }
     # log
     opt.condition_option("log", { name: "follow", short: "-f", type: :option })
     opt.condition_option("log", { name: "task", mandatory: true })
-    opt.condition_action("log") { |opts| puts opts }
+    opt.condition_option("log", { name: "hash" })
+    opt.condition_action("log") { |opts| puts Manager.instance.log(opts[:task], opts[:hash], opts[:follow]) }
     # status
     opt.condition_option("status", { name: "hash" })
-    opt.condition_action("status") { |opts| puts opts }
+    opt.condition_action("status"){ |opts| puts Manager.instance.status(opts[:hash]) }
     #clean
     opt.condition_option("clean", { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean", { name: "task", multiple: true } )
-    opt.condition_action("clean") { |opts| puts opts }
+    opt.condition_action("clean") { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
     # ls
     opt.condition_option("ls", { name: "task", mandatory: true } )
     opt.condition_option("ls", { name: "hash" } )
-    opt.condition_action("ls") { |opts| puts opts }
+    opt.condition_action("ls") { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
     # cat
     opt.condition_option("cat", { name: "task", mandatory: true } )
     opt.condition_option("cat", { name: "file", mandatory: true } )
     opt.condition_option("cat", { name: "hash" } )
-    opt.condition_action("cat") { |opts| puts opts }
+    opt.condition_action("cat") { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
 
     opt.parse(ARGV)
 
