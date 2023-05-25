@@ -65,8 +65,8 @@ class Main
     opt.condition_help("tasks",             "Lists all the tasks and its description")
     opt.condition_action("tasks")           { |opts| puts Manager.instance.tasks_list() }
     # set
-    opt.condition_option("set",             { name: "var=value", type: :equal, mandatory: true } )
-    opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:var=value][0], opts[:var=value][1]); VarManager.instance.save }
+    opt.condition_option("set",             { name: "option", type: :equal, mandatory: true } )
+    opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:option][0], opts[:option][1]); VarManager.instance.save }
     # execute
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
@@ -82,7 +82,7 @@ class Main
     opt.condition_option("git",             { name: "gitcommand", mandatory: true, multiple: true } )
     opt.condition_action("git")             { |opts| GitManager.internal_git(opts[:gitcommand]) }
     # search  $<options>
-    opt.condition_option("git",             { name: "options", mandatory: true, multiple: true } )
+    opt.condition_option("search",             { name: "options", mandatory: true, multiple: true } )
     opt.condition_action("search")          { |opts| puts GitManager.search_log(opts[:options]) }
     # compare
     opt.condition_option("compare",         { name: "task", mandatory: true } )
