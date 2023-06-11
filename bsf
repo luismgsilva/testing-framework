@@ -11,7 +11,7 @@ class Main
       Helper.lock_mg(:UNLOCK, args)
       exit
     end
-    # Helper.check_environment(args)
+    Helper.check_environment(args)
     Helper.lock_mg(:LOCK, args)
 
     begin
