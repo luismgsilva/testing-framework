@@ -299,8 +299,8 @@ class Manager
     GitManager.get_repo_list()
   end
 
-  def build(filter = nil, skip_flag = nil)
-    Build.build(filter, skip_flag)
+  def build(filter = nil, skip_flag = nil, parallel=nil)
+    Build.build(filter, skip_flag, parallel)
   end
 
 end

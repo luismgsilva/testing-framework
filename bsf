@@ -71,7 +71,7 @@ class Main
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
-    opt.condition_action("execute")         { |opts| Manager.instance.build(opts[:task], opts[:confirm]) }
+    opt.condition_action("execute")         { |opts| Manager.instance.build(opts[:task], opts[:confirm], opts[:parallel]) }
     # publish
     opt.condition_action("publish")         { |opts| Manager.instance.publish() }
     # diff

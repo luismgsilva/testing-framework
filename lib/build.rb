@@ -40,13 +40,13 @@ class Build
     end
   end
 
-  def self.build(to_filter, skip_flag)
+  def self.build(to_filter, skip_flag, parallel)
     data = Config.instance.tasks
     data = filter_task(data, to_filter) if to_filter
     DirManager.create_dir(DirManager.get_logs_path)
 
     pre_condition(data, skip_flag)
-    parallel_verifier(data)
+    parallel_verifier(data, parallel)
   end
 
   def self.execute(task, command)
@@ -75,8 +75,7 @@ class Build
   end
 
 
-  def self.parallel_verifier(data)
-    parallel = true
+  def self.parallel_verifier(data, parallel)
     task_list = []
     data.each do |task, command|
       if parallel
