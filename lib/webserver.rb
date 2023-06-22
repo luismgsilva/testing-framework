@@ -6,6 +6,7 @@ class WebServer < Sinatra::Base
 
   def handler(message)
     data = JSON.parse(request.body.read, symbolize_names: true)
+    puts data
     begin
       yield data
       { code: 20, message: message }.to_json
@@ -107,54 +108,56 @@ class WebServer < Sinatra::Base
   # POST
     # `bsf sources get ${sources}`
     post "/sources" do
-      handler("Repository cloned successfully") do |data|
-        Source.get_sources(data[:source], data[:single])
+      handler("Repository cloned successfully") do |opts|
+        Source.get_sources(opts[:source], opts[:single])
       end
     end
     # `bsf sources delete <sources>`
     delete "/sources" do
-      handler("Repository deleted successfully") do |data|
-        Source.delete_sources(data[:source])
+      handler("Repository deleted successfully") do |opts|
+        Source.delete_sources(opts[:source])
       end
     end
 
     # `bsf set <var>=<value>`
     put "/vars" do
-      handler("Input variable updated successfully") do |data|
-        VarManager.instance.set(data[:var], data[:value])
+      handler("Input variable updated successfully") do |opts|
+        VarManager.instance.set(opts[:var], opts[:value])
         VarManager.instance.save
       end
     end
 
     put "/git" do
-      handler("Git command executed successfully") do |data|
+      handler("Git command executed successfully") do |opts|
         GitManager.internal_git(opts[:gitcommand])
       end
     end
 
     # `bsf saveconfi <path>`
     post "/saveconfig" do
-      handler("Config saved successfully") do |data|
-        Config.save_config(data[:path])
+      handler("Config saved successfully") do |opts|
+        Config.save_config(opts[:path])
       end
     end
     
     # `bsf execute ${task}`
     post "/execute" do
-      handler("Execution finished") do |data|
-        Manager.instance.build(data[:task], data[:y])
+      handler("Execution finished") do |opts|
+        Manager.instance.build(opts[:task], opts[:y])
       end
     end
     # `bsf publish`
     post "/publish" do
-      handler("Publish successful") do |data|
+      handler("Publish successful") do |opts|
         Manager.instance.publish()
       end
     end
     # `bsf clean ${task}`
     post "/clean" do
+      handler("Clean successful") do |opts|
+        Manager.instance.clean(opts[:task], opts[:confirm])
+      end
     end
-
     run!
   end
 end

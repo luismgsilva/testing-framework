@@ -38,8 +38,8 @@ class Main
   def option_parser_conditions_initializer(opt)
     # sources get
     opt.condition_option("sources get",     { name: "task", multiple: true } )
-    opt.condition_option("sources get",     { name: "single_branch", short: "-s", type: :option } )
-    opt.condition_action("sources get")     { |opts| puts "#{opts[:task]}, #{opts[:single_branch]}" }
+    opt.condition_option("sources get",     { name: "single-branch", short: "-s", type: :option } )
+    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:task], opts[:"single-branch"]) }
     # sources delete
     opt.condition_option("sources delete",  { name: "task", mandatory: true } )
     opt.condition_action("sources delete")  { |opts| Source.delete_sources(opts[:task]) }
@@ -70,7 +70,7 @@ class Main
     # execute
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
-    opt.condition_option("execute",         { name: "task", mandatory: true, multiple: true } )
+    opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
     opt.condition_action("execute")         { |opts| Manager.instance.build(opts[:task], opts[:confirm]) }
     # publish
     opt.condition_action("publish")         { |opts| Manager.instance.publish() }
