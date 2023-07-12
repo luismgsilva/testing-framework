@@ -1,3 +1,5 @@
+require_relative './exceptions.rb'
+
 class VarManager
 
   @@instance = nil
@@ -48,8 +50,14 @@ class VarManager
   end
 
   def set(var, value)
-    abort("ERROR: not a editable variable") if var =~/[\@]/
-    abort("ERROR: #{var} not a variable") unless Config.instance.required_variables.include?(var)
+    # abort("ERROR: not a editable variable") if var =~/[\@]/
+    if var =~/[\@]/
+      raise Ex::NotEditableVariableException
+    end
+
+    if !Config.instance.required_variables.include?(var)
+      raise Ex::NotAVariableException.new(var)
+    end
 
     @vars[var] = value
   end
@@ -60,7 +68,9 @@ class VarManager
   def process_variables(str)
     return str.gsub(/\$var\(([A-Z0-9_@]+)\)/) do |m|
       var_name = $1
-      abort("Input variable not set #{$1}.") if @vars[var_name].nil?
+      if @vars[var_name].nil?
+        raise Ex::InputVariableNotSetException.new(var_name)
+      end
       @vars[var_name]
     end
   end

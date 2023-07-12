@@ -3,6 +3,8 @@ require_relative './lib/option_parser.rb'
 require_relative './lib/manager.rb'
 require_relative './lib/helpers.rb'
 require_relative './lib/webserver.rb'
+require_relative './lib/exceptions.rb'
+
 class Main
   def initialize
     args = ARGV.clone
@@ -11,26 +13,18 @@ class Main
       Helper.lock_mg(:UNLOCK, args)
       exit
     end
-    Helper.check_environment(args)
-    Helper.lock_mg(:LOCK, args)
 
     begin
+      Helper.check_environment(args)
+      Helper.lock_mg(:LOCK, args)
+
       opt = OptionParser::OptionParser.new
       option_parser_default_initializer(opt)
       option_parser_conditions_initializer(opt)
       Helper.lock_mg(:UNLOCK, args)
-    rescue SignalException
-      Helper.lock_mg(:UNLOCK, args)
-      exit -1
     rescue Exception => e
-      puts e
       Helper.lock_mg(:UNLOCK, args)
-      exit -1
-    rescue Interrupt
-      Helper.lock_mg(:UNLOCK, args)
-      exit -1
-    rescue EPIPE
-      Helper.lock_mg(:UNLOCK, args)
+      puts e.message
       exit -1
     end
   end

@@ -1,3 +1,5 @@
+require_relative './exceptions.rb'
+
 class Helper
 
   def self.get_status(status_path_file = DirManager.get_status_file)
@@ -64,21 +66,15 @@ class Helper
 
   def self.check_environment(args)
     return if (%w[init clone] & args).any? || args.empty?
-    begin
-      raise "NotTBSFEnvironmentException" if !File.directory? (DirManager.get_framework_path)
-    rescue Exception => e
-      abort ("ERROR: Not in a TBSF Environment") if e.message == "NotTBSFEnvironmentException"
+    if !File.directory? (DirManager.get_framework_path)
+      raise Ex::NotBSFDirectoryException
     end
   end
 
   def self.lock_mg(type, args)
     return if !(%w[execute set git sources clean publish] & args).any?
     if type == :LOCK
-      begin
         lock()
-      rescue Exception => e
-        abort("WARNING: Could not get Lock") if e.message == "CouldNotGetLockException"
-      end
     elsif type == :UNLOCK
       unlock()
     end
@@ -87,7 +83,9 @@ class Helper
   def self.lock
     lock_file = DirManager.get_lock_file
     if File.exists? lock_file
-      raise "CouldNotGetLockException" if (`uptime -s` == `cat #{lock_file}`)
+      if (`uptime -s` == `cat #{lock_file}`)
+        raise Ex::CouldNotGetLockException
+      end
       unlock()
     end
     system "uptime -s > #{lock_file}"
@@ -104,7 +102,9 @@ class Helper
     loop {
       input = $stdin.gets.chomp
       break if %w[y yes].any? input
-      raise "ProcessTerminatedByUserException" if %w[n no].any? input
+      if %w[n no].any? input
+        raise Ex::ProcessTerminatedByUserException
+      end
     }
   end
 end

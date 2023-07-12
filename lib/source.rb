@@ -1,3 +1,5 @@
+require_relative './exceptions.rb'
+
 class Source
 
   def self.get_sources_config()
@@ -5,39 +7,34 @@ class Source
   end
 
   def self.get_sources(input_sources = nil, single)
-  input_sources = [input_sources] if input_sources.class == String
-    begin
-      config_sources = get_sources_config
-      if input_sources
-        input_sources.map! &:to_sym
-        raise("NotRegisteredSourceException") if !(input_sources - config_sources.keys).empty?
-        config_sources = config_sources.slice(*input_sources)
+    input_sources = [input_sources] if input_sources.class == String
+    config_sources = get_sources_config
+    if input_sources
+      input_sources.map! &:to_sym
+      if !(input_sources - config_sources.keys).empty?
+        raise Ex::NotRegisteredSourceException
       end
-      raise("NothingToCloneException") if config_sources.empty?
-
-      config_sources.each_pair do |k, v|
-        source = v
-        source[:name] = k
-        source[:single] = true if single
-        GitManager.get_clone(source)
-      end
-
-      GitManager.instance.set_git(get_sources_config[name.to_sym]) 
-      GitManager.instance.get_clone
-    rescue Exception => e
-      abort("ERROR: Nothing to clone.") if e.message == "NothingToCloneException"
-      abort("ERROR: Not a registered Git Repo") if e.message == "NotRegisteredSourceException"
+      config_sources = config_sources.slice(*input_sources)
     end
+    if config_sources.empty?
+      raise Ex::NothingToCloneException
+    end
+    config_sources.each_pair do |k, v|
+      source = v
+      source[:name] = k
+      source[:single] = true if single
+      GitManager.get_clone(source)
+    end
+    GitManager.instance.set_git(get_sources_config[name.to_sym]) 
+    GitManager.instance.get_clone
   end
 
   def self.delete_sources(task)
-    begin
-      source_dir = DirManager.get_source_path(task)
-      raise "NotRegisteredSourceExceptiono" if !File.directory? source_dir 
-      system "rm -rf #{source_dir}"
-    rescue Exception => e
-      abort("ERROR: Not a registered Source") if e.message == "NotRegisteredSourceException"
-    end 
+    source_dir = DirManager.get_source_path(task)
+    if !File.directory? source_dir 
+      raise Ex::NotRegisteredSourceException
+    end
+    system "rm -rf #{source_dir}"
   end
 
   def self.list_sources()
@@ -48,12 +45,10 @@ class Source
   end
 
   def self.show_sources()
-    begin
-      raise "NoSourcesClonedYetException" if !File.directory? DirManager.get_sources_path
-      Dir.children("#{$PWD}/sources").sort.each { |source| puts source }
-    rescue Exception => e
-      abort("ERROR: No sources cloned yet") if e.message == "NoSourcesClonedYetException"
+    if !File.directory? DirManager.get_sources_path
+      raise Ex::NoSourcesClonedYetException
     end
+    Dir.children("#{$PWD}/sources").sort.each { |source| puts source }
   end
 
   def self.exists_repo(name)
