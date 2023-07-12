@@ -1,11 +1,14 @@
 require_relative './helpers.rb'
+require_relative './exceptions.rb'
 
 class Build
 
   def self.filter_task(data, to_filter)
     to_filter.map! &:to_sym
     res =  to_filter - data.keys
-    abort ("ERROR: Option Invalid #{res[0]}") if !res.empty?
+    if !res.empty?
+      raise Ex::InvalidOptionException(res[0])
+    end
     return data.slice(*to_filter)
   end
 
@@ -32,11 +35,7 @@ class Build
         puts "- #{tasks[:task]}: #{tasks[:pre_condition]}"
       end
       exit -1 if data.empty?
-      begin
-        Helper.input_user("Do you want to contiue? [y/n]")
-      rescue Exception => e
-        abort("Process Terminated By User") if e.message == "ProcessTerminatedByUserException"
-      end
+      Helper.input_user("Do you want to contiue? [y/n]")
     end
   end
 

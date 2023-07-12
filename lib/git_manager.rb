@@ -1,3 +1,6 @@
+require_relative './exceptions.rb'
+
+
 class GitManager
 
   attr_reader :name
@@ -57,16 +60,17 @@ class GitManager
   end
 
   def self.create_env()
-    abort("Must initialize Git Repo: bsf git init")
+    raise Ex::MustInitializeGitRepoException
+
   end
 
   def self.internal_git(command)
     command = command.join(" ") if command.class == Array
 
-    begin
-      Helper.input_user("WARNING: This instruction may result in internal conflicts with the commit messages.\nDo you wish to continue? [y/n]") if command =~ /commit/ 
-    rescue Exception => e
-      abort("Process Terminated by User") if e.message == "ProcessTerminatedByUserException"
+    # begin
+    if command =~ /commit/
+      msg = "WARNING: This instruction may result in internal conflicts with the commit messages.\nDo you wish to continue? [y/n]"
+      Helper.input_user(msg)
     end
 
     to_execute = "cd #{DirManager.get_framework_path} ; git #{command}"

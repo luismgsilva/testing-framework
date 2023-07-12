@@ -1,4 +1,6 @@
 require_relative 'directory_manager.rb'
+require_relative './exceptions.rb'
+
 
 class Config
 
@@ -13,25 +15,18 @@ class Config
 
   def initialize
     file = "#{DirManager.get_config_path}/config.json"
-    abort("Not a BSF directory") if !File.exists?(file)
+    raise Ex::NotBSFDirectoryException if !File.exists?(file)
     @config = JSON.parse(File.read(file), symbolize_names: true)
   end
 
   def self.init_bsf(config_source_path)
-    begin
-      internal_config_path = DirManager.get_config_path()
-      raise("PathMustContainConfigFileException") if !DirManager.file_exists("#{config_source_path}/config.json") 
-      raise("AlreadyBSFDirectory") if File.directory? DirManager.get_framework_path
-      raise("InvalidConfigFileException") if !valid_json("#{config_source_path}/config.json")
-      DirManager.create_dir(internal_config_path)
-      raise("CouldNotCopyFilesException") if !DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
-      Helper.reset_status()
-    rescue Exception => e
-      abort("ERROR: Already a BSF Directory") if e.message == "AlreadyBSFDirectory"
-      abort("ERROR: Invalid Config File") if e.message == "InvalidConfigFileException"
-      abort("ERROR: Path must contain config.json file") if e.message == "PathMustContainConfigFileException"
-      abort("ERROR: Could not copy Files") if e.message == "CouldNotCopyFilesException"
-    end
+    internal_config_path = DirManager.get_config_path()
+    raise Ex::PathMustContainConfigFileException if !DirManager.file_exists("#{config_source_path}/config.json")
+    raise Ex::AlreadyBSFDirectoryException if File.directory? DirManager.get_framework_path
+    raise Ex::InvalidConfigFileException if !valid_json("#{config_source_path}/config.json")
+    DirManager.create_dir(internal_config_path)
+    raise Ex::CouldNotCopyFilesException if !DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
+    Helper.reset_status()
   end
   
   def self.valid_json(file_path)

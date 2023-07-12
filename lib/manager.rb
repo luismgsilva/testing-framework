@@ -6,6 +6,7 @@ require_relative './var_manager.rb'
 require_relative './build.rb'
 require_relative './source.rb'
 require_relative './helpers.rb'
+require_relative './exceptions.rb'
 require 'json'
 require 'erb'
 
@@ -30,10 +31,9 @@ class Manager
   def clean(tasks = nil, skip_flag = nil)
     tasks = Config.instance.tasks.keys if tasks.nil?
     tasks = [tasks] if tasks.class == String
-    begin 
-      Helper.input_user("Are you sure you want to clean: [y/n]", tasks) if skip_flag.nil?
-    rescue Exception => e
-      abort("Process terminated by User") if e.message == "ProcessTerminatedByUserException" #
+    if skip_flag.nil?
+      msg = "Are you sure you want to clean: [y/n]"
+      Helper.input_user(msg, tasks)
     end
     tasks.each { |task| DirManager.clean_tasks_folder(task) }
     Helper.reset_status()
@@ -60,9 +60,15 @@ class Manager
   end
 
   def report(target, options)
-    abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
-    abort("WARMING: Report not supported") if Config.instance.report(target).nil? #
+    # abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
+    if !Config.instance.tasks.keys.include? target.to_sym
+      raise Ex::TargetNotInSystemException
+    end
 
+    # abort("WARMING: Report not supported") if Config.instance.report(target).nil? #
+    if Config.instance.report(target).nil?
+      raise Ex::ReportNotSupportedException
+    end
 
     commit_id = nil
     if options and options.include? "-h"
@@ -76,7 +82,11 @@ class Manager
     options = options || ""
 
     if commit_id
-      abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
+      # abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
+      if check_commit_id(commit_id)
+        raise Ex::CommitIdNotValidException
+      end
+
       dir = DirManager.get_compare_dir(commit_id)
       GitManager.create_worktree(commit_id, dir)
       file = { hash: commit_id, path: dir, }.merge(get_commit_data(dir, commit_id))
@@ -92,7 +102,12 @@ class Manager
 
     previd = File.read("#{dir}/tasks/#{target}/.previd").chomp
     to_report = previd == file[:prev_commit_id]
-    abort("ERROR: Task #{target} not executed") if !to_report
+
+    # abort("ERROR: Task #{target} not executed") if !to_report
+    if !to_report
+      raise Ex::TaskNotExecutedException
+    end
+
     options += " -h #{file[:path]}/tasks/#{target}:#{file[:hash]}"
 
     VarManager.instance.set_internal("@OPTIONS", options)
@@ -108,9 +123,13 @@ class Manager
 
 
   def compare(target, options)
-    abort("ERROR: Target not specified") if target.nil?
-    abort("ERROR: #{target} not in the system") if !Config.instance.tasks.keys.include? target.to_sym
-    # abort("WARMING: Comparator not supported") if Config.instance.comparator(target).nil?
+    if target.nil?
+      raise Ex::TargetNotSpecifiedException
+    end
+    if !Config.instance.tasks.keys.include? target.to_sym
+      raise Ex::TargetNotInSystemException
+    end
+
     return "no" if Config.instance.comparator(target).nil?
     to_print = ""
     options = options || ""
@@ -119,7 +138,9 @@ class Manager
 
     tmp = opts.shift.split(":")
     tmp.each do |hash|
-      abort("ERROR: #{hash} not valid") if check_commit_id(hash)
+      if check_commit_id(hash)
+        raise Ex::CommitIdNotValidException(hash)
+      end
     end
 
     tmp.each do |hash|
@@ -162,7 +183,10 @@ class Manager
 
 
   def agregator(options)
-    abort("WARMING: Comparator agregator not supported") if Config.instance.comparator_agregator().nil?
+    if Config.instance.comparator_agregator().nil?
+      raise Ex::AgregatorNotSupportedException
+    end
+
     opts = [options[0], "-o", "json"]
     agregator = {}
     Config.instance.tasks.keys.each do |task|
@@ -171,8 +195,6 @@ class Manager
         next
       end
       agregator.merge!(JSON.parse(result))
-
-      # agregator.merge!(JSON.parse(compare(task, opts)))
     end
 
     tmp = options.shift.split(":")
@@ -191,8 +213,14 @@ class Manager
   end
 
   def ls(task, commit_id)
-    abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
-    abort("ERROR: Task #{task} not found") if !Config.instance.tasks.keys.include? task.to_sym
+    if check_commit_id(commit_id)
+      raise Ex::CommitIdNotValidException
+    end
+    if !Config.instance.tasks.keys.include? task.to_sym
+      raise Ex::TaskNotFoundException.new(task)
+    end
+
+
     return `ls #{DirManager.get_persistent_ws_path}/#{task}` if !commit_id
 
     tmp_dir = DirManager.get_worktree_dir()
@@ -203,8 +231,13 @@ class Manager
   end
 
   def cat(task, commit_id, file)
-    abort("ERROR: #{commit_id} not valid") if check_commit_id(commit_id)
-    abort("ERROR: Task #{task} not found") if !Config.instance.tasks.keys.include? task.to_sym
+    if check_commit_id(commit_id)
+      raise Ex::CommitIdNotValidException
+    end
+    if !Config.instance.tasks.keys.include? task.to_sym
+      raise Ex::TaskNotFoundException.new(task)
+    end
+
     return `cat #{DirManager.get_persistent_ws_path}/#{task}/#{file}` if !commit_id
 
     tmp_dir = DirManager.get_worktree_dir()
@@ -230,7 +263,9 @@ class Manager
       to_execute = [to_execute] if to_execute.class == String
       to_execute.each do |execute|
         output = `#{execute}`
-        abort("ERROR: #{execute}") if !$?.success?
+        if !$?.success?
+          raise Ex::PublishCommandException.new(execute)
+        end
         commit_msg = JSON.parse(output, symbolize_names: true)
         place_holder.merge!(commit_msg)
       end
@@ -245,8 +280,12 @@ class Manager
   end
 
   def diff(hash1, hash2)
-    abort("ERROR: #{hash1} not valid") if check_commit_id(hash1)
-    abort("ERROR: #{hash2} not valid") if check_commit_id(hash2)
+    if check_commit_id(hash1)
+      raise Ex::CommitIdNotValidException
+    end
+    if check_commit_id(hash2)
+      raise Ex::CommitIdNotValidException
+    end
 
     hash1 = JSON.parse(`cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash1}`)
     hash2 = JSON.parse(`cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash2}`)
@@ -260,23 +299,19 @@ class Manager
       0 => "Passed",
       1 => "Failed"
     }
-    begin
-      if commit_id
-        worktree_dir = DirManager.get_worktree_dir()
-        GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
-        status = Helper.get_status("#{worktree_dir}/status.json")
-      else
-        status = Helper.get_status
-      end
-      status.each_pair { |task, result| to_print += "#{mapping[result]}: #{task}\n" }
-      GitManager.internal_git("worktree remove #{worktree_dir}") if commit_id
-    rescue Exception => e
-      abort("ERROR: Nothing executed yet") if e.message == "StatusFileDoesNotExists"
+    if commit_id
+      worktree_dir = DirManager.get_worktree_dir()
+      GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
+      status = Helper.get_status("#{worktree_dir}/status.json")
+    else
+      status = Helper.get_status
     end
+    status.each_pair { |task, result| to_print += "#{mapping[result]}: #{task}\n" }
+    GitManager.internal_git("worktree remove #{worktree_dir}") if commit_id
     return to_print
   end
 
-  def log(task, commit_id, is_tail = nil)
+  def log(task, commit_id, is_tail = nil)()
     if commit_id
       worktree_dir = DirManager.get_worktree_dir()
       GitManager.internal_git("worktree add #{worktree_dir} #{commit_id}")
@@ -285,7 +320,9 @@ class Manager
       log_file = DirManager.get_log_file(task)
     end
 
-    abort("ERROR: Tool not found") if !File.exists? log_file
+    if !File.exists? log_file
+      raise Ex::TaskNotFoundException
+    end
     if is_tail
       system "tail -f #{log_file}"
     else
