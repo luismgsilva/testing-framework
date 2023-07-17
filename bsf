@@ -1,17 +1,4 @@
 #!/usr/bin/env ruby
-# require_relative './lib/option_parser.rb'
-# require_relative './lib/helpers.rb'
-# require_relative './lib/webserver.rb'
-# require_relative './lib/exceptions.rb'
-# require_relative './lib/directory_manager.rb'
-# require_relative './lib/git_manager.rb'
-# require_relative './lib/lock.rb'
-# require_relative './lib/build.rb'
-# require_relative './lib/.rb'
-
-
-
-
 Dir.glob(File.join(__dir__, 'lib', '*.rb')).each do |file|
   require_relative file
 end
@@ -130,7 +117,7 @@ class Main
     opt.condition_option("cat",             { name: "file", mandatory: true } )
     opt.condition_option("cat",             { name: "hash" } )
     opt.condition_action("cat")             { |opts| puts Cat.cat(opts[:task], opts[:hash], opts[:file]) }
-
+    # cp
     opt.condition_option("cp",              { name: "task", mandatory: true } )
     opt.condition_option("cp",              { name: "file", mandatory: true } )
     opt.condition_option("cp",              { name: "path", mandatory: true } )
