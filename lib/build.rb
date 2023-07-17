@@ -1,50 +1,60 @@
-require_relative './helpers.rb'
-require_relative './exceptions.rb'
+# require_relative './helpers.rb'
+# require_relative './exceptions.rb'
 
 class Build
 
-  def self.filter_task(data, to_filter)
-    to_filter.map! &:to_sym
-    res =  to_filter - data.keys
-    if !res.empty?
+  def self.filter_task(data, selected_tasks)
+    selected_tasks.map! &:to_sym
+    res =  selected_tasks - data.keys
+    # if !res.empty?
+    if res
       raise Ex::InvalidOptionException(res[0])
     end
-    return data.slice(*to_filter)
+    return data.slice(*selected_tasks)
   end
 
-  def self.pre_condition(data, skip_flag)
-    failed_tasks = []
+  def self.pre_condition(data, skip)
+    # failed_tasks = []
+    failed_tasks = {}
     data.each_pair do |task, command|
       next if command[:pre_condition].nil?
       Helper.set_internal_vars(task)
-      to_execute = VarManager.instance.prepare_data(command[:pre_condition])
+      conditions = VarManager.instance.prepare_data(command[:pre_condition])
 
       out = File.open(DirManager.get_log_file(task), "w")
-      to_execute = [to_execute] if to_execute.class == String
-      to_execute.each do |execute|
-        system("echo 'BSF Executing: #{execute}' ; #{execute}", out: out, err: out)
-        failed_tasks << { task: task, pre_condition: execute } if !$?.success?
+      # to_execute = [to_execute] if to_execute.class == String
+      Array(conditions).each do |condition|
+        system("echo 'BSF Executing: #{condition}' ; #{condition}", out: out, err: out)
+        # failed_tasks << { task: task, pre_condition: condition } if !$?.success?
+        # failed_tasks << { task: pre_condition: condition }
+        failed_tasks[task] = condition if !$?.success?
       end
     end
 
     if failed_tasks.any?
-      data.select! { |task, command| command[:pre_condition].nil? || !failed_tasks.any? { |failed| failed[:task] == task } }
-      return if skip_flag
-      puts "One or more pre-conditions have failed:"
-      failed_tasks.each do |tasks|
-        puts "- #{tasks[:task]}: #{tasks[:pre_condition]}"
+      # data.select! { |task, command| command[:pre_condition].nil? || !failed_tasks.any? { |failed| failed[:task] == task } }
+      data = data[data.keys - failed_tasks.keys]
+      # puts "One or more pre-conditions have failed:"
+      msg = "One or more pre-conditions have failed:\n"
+      failed_tasks.each do |task, condition|
+        msg += "- #{task}: #{condition}\n"
       end
-      exit -1 if data.empty?
+      raise Ex::API_TEMP.new(msg) if @api
+      puts msg
+      return if skip
+      exit -1 if !data
       Helper.input_user("Do you want to contiue? [y/n]")
     end
   end
 
-  def self.build(to_filter, skip_flag, parallel)
+  @api = false
+
+  def self.build(selected_tasks, skip, parallel, api = false)
     data = Config.instance.tasks
-    data = filter_task(data, to_filter) if to_filter
+    data = filter_task(data, selected_tasks) if selected_tasks
     DirManager.create_dir(DirManager.get_logs_path)
 
-    pre_condition(data, skip_flag)
+    pre_condition(data, skip)
     parallel_verifier(data, parallel)
   end
 
@@ -56,21 +66,28 @@ class Build
     DirManager.create_dir(workspace_dir)
     DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
 
+
     out = File.open(DirManager.get_log_file(task), "w")
+    # new
+    # original_stdout = $stdout
+    # $stdout.reopen(out)
+
     puts "Executing #{task}.."
     status = nil
-    to_execute = [to_execute] if to_execute.class == String
-    to_execute.each do |execute|
+    # to_execute = [to_execute] if to_execute.class == String
+    Array(to_execute).each do |execute|
       status = system "echo 'BSF Executing: #{execute}' ;
                        cd #{workspace_dir} ;
                        #{execute}", out: out, err: out
       break if !status
     end
 
+    #new
+    # $stdout.reopen(original_stdout)
     out.close()
 
-    Helper.set_status(status, task)
-    Helper.set_previd(status, task)
+    Status.set_status(status, task)
+    set_previd(status, task)
   end
 
 
@@ -84,7 +101,13 @@ class Build
         execute(task, command)
       end
     end
-
     task_list.each { |task| task.join } if parallel
+  end
+
+  def self.set_previd(status, task)
+    path = "#{DirManager.get_persistent_ws_path}/#{task}"
+    if !system "cd #{path} ; git rev-parse HEAD 2> /dev/null 1> .previd"
+      system "echo 'first' > #{path}/.previd"
+    end
   end
 end

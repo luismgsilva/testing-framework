@@ -21,11 +21,23 @@ class Config
 
   def self.init_bsf(config_source_path)
     internal_config_path = DirManager.get_config_path()
-    raise Ex::PathMustContainConfigFileException if !DirManager.file_exists("#{config_source_path}/config.json")
-    raise Ex::AlreadyBSFDirectoryException if File.directory? DirManager.get_framework_path
-    raise Ex::InvalidConfigFileException if !valid_json("#{config_source_path}/config.json")
+    unless DirManager.file_exists("#{config_source_path}/config.json")
+      raise Ex::PathMustContainConfigFileException
+    end
+    if File.directory? DirManager.get_framework_path
+      raise Ex::AlreadyBSFDirectoryException
+    end
+    unless valid_json("#{config_source_path}/config.json")
+      raise Ex::InvalidConfigFileException
+    end
+
     DirManager.create_dir(internal_config_path)
-    raise Ex::CouldNotCopyFilesException if !DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
+
+    unless DirManager.copy_folder("#{config_source_path}/*",
+                                    internal_config_path)
+      raise Ex::CouldNotCopyFilesException
+    end
+
     Helper.reset_status()
   end
   
@@ -55,24 +67,24 @@ class Config
   end
 
   def tasks
-    return @config[:tasks]
+    @config[:tasks]
   end
   def task_description(task)
-    return tasks[task.to_sym][:description]
+    tasks[task.to_sym][:description]
   end
   def publish_header(task)
-    return tasks[task.to_sym][:publish_header]
+    tasks[task.to_sym][:publish_header]
   end
   def comparator(task)
-    return tasks[task.to_sym][:comparator]
+    tasks[task.to_sym][:comparator]
   end
   def report(task)
-    return tasks[task.to_sym][:report]
+    tasks[task.to_sym][:report]
   end
   def comparator_agregator()
-   return @config[:comparator_agregator]
+    @config[:comparator_agregator]
   end 
   def sources
-    return @config[:sources]
+    @config[:sources]
   end
 end

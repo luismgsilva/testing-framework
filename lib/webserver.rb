@@ -143,6 +143,7 @@ class WebServer < Sinatra::Base
     # `bsf execute ${task}`
     post "/execute" do
       handler("Execution finished") do |opts|
+        # Manager.instance.build(opts[:task], opts[:y])
         Manager.instance.build(opts[:task], opts[:y])
       end
     end

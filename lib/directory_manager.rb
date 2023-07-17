@@ -76,9 +76,11 @@ module DirManager
     create_dir(dir)
     return dir
   end
+  # why?
   def self.create_directories(name)
-    paths = ["#{Dir.getwd}/build/#{name}",
-             "#{Dir.getwd}/#{FRAMEWORK}/logs/" #,
+    paths = [
+      "#{Dir.getwd}/build/#{name}",
+      "#{Dir.getwd}/#{FRAMEWORK}/logs/"
     ]
     paths.each { |path| create_dir(path) }
   end

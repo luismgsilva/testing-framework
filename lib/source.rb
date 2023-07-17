@@ -6,28 +6,54 @@ class Source
     return Config.instance.sources
   end
 
+  # def self.get_sources(input_sources = nil, single)
+  #   input_sources = [input_sources] if input_sources.class == String
+  #   config_sources = get_sources_config
+  #   if input_sources
+  #     input_sources.map! &:to_sym
+  #     if !(input_sources - config_sources.keys).empty?
+  #       raise Ex::NotRegisteredSourceException
+  #     end
+  #     config_sources = config_sources.slice(*input_sources)
+  #   end
+  #   if config_sources.empty?
+  #     raise Ex::NothingToCloneException
+  #   end
+  #   config_sources.each_pair do |k, v|
+  #     source = v
+  #     source[:name] = k
+  #     source[:single] = true if single
+  #     GitManager.get_clone(source)
+  #   end
+  #   GitManager.instance.set_git(get_sources_config[name.to_sym])
+  #   GitManager.instance.get_clone
+  # end
+
   def self.get_sources(input_sources = nil, single)
-    input_sources = [input_sources] if input_sources.class == String
+    input_sources = [input_sources].compact if input_sources.is_a?(String)
     config_sources = get_sources_config
+
     if input_sources
       input_sources.map! &:to_sym
-      if !(input_sources - config_sources.keys).empty?
-        raise Ex::NotRegisteredSourceException
+      invalid_sources = input_sources - config_sources.keys
+      unless invalid_sources.empty?
+        raise Ex::NotRegisteredSourceException.new(invalid_sources.join(" "))
       end
       config_sources = config_sources.slice(*input_sources)
     end
-    if config_sources.empty?
-      raise Ex::NothingToCloneException
-    end
-    config_sources.each_pair do |k, v|
-      source = v
-      source[:name] = k
+
+    raise Ex::NothingToCloneException if config_sources.empty?
+
+    config_sources.each_pair do |name, source|
+      source[:name] = name
       source[:single] = true if single
       GitManager.get_clone(source)
     end
-    GitManager.instance.set_git(get_sources_config[name.to_sym]) 
-    GitManager.instance.get_clone
+
+    # GitManager.set_git(get_sources_config[name.to_sym])
+    # GitManager.get_clone
   end
+
 
   def self.delete_sources(task)
     source_dir = DirManager.get_source_path(task)
