@@ -18,25 +18,24 @@ class VarManager
   end
 
   def internal_vars
-    [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS", "@WORKSPACE", "@BASELINE", "@REFERENCE", "@CONFIG_SOURCE_PATH", "@OPTIONS", "@ROOT", "@AGREGATOR"]
+    [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS",
+      "@WORKSPACE", "@BASELINE", "@REFERENCE",
+      "@CONFIG_SOURCE_PATH", "@OPTIONS", "@ROOT",
+      "@AGREGATOR"
+    ]
   end
-  def var_list()
-    var_list = Config.instance.required_variables
 
-    params = @vars.keys
-    internal_vars.each { |var| params.push(var) }
+  def var_list
+    var_list = Config.instance.required_variables
+    params = @vars.keys + internal_vars
 
     var_list.each do |var|
-      if(var =~ /^\@/)
-        if(!params.include?(var))
-          puts "Internal Variable #{var} is invalid"
-        end
-      else
-        if !params.include?(var)
-          puts "Input Variable #{var} not defined"
-        else
-          puts "Input Variable #{var} defined: #{@vars[var]}"
-        end
+      if var.start_with?("@") && !params.include?(var)
+        puts "Internal Variable #{var} is invalid"
+      elsif !var.start_with?("@") && !params.include?(var)
+        puts "Input Variable #{var} not defined"
+      elsif !var.start_with?("@") && params.include?(var)
+        puts "Input Variable #{var} defined: #{@vars[var]}"
       end
     end
   end
@@ -50,7 +49,6 @@ class VarManager
   end
 
   def set(var, value)
-    # abort("ERROR: not a editable variable") if var =~/[\@]/
     if var =~/[\@]/
       raise Ex::NotEditableVariableException
     end

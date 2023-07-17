@@ -29,6 +29,8 @@ module OptionParser
     def error(message, rules)
       puts message
       @default_action.call() if (@default_action)
+      # puts rules[:help]
+      # @default_action.call() if (@default_action)
       exit -1
     end
 
@@ -44,10 +46,12 @@ module OptionParser
             if ARGV[0] =~ (/^([^}]+)=([^}]+)$/)
               options[o[:name].to_sym] = [$1, $2]
             elsif o[:mandatory]
-              error("Error: missing argument #{o[:name]}", @conditions)
+              error("Error: missing argument #{o[:name]}", @conditions[rule])
             end
           elsif o[:type] == :option
-            options[o[:name].to_sym] = true if ARGV.include?(o[:short]) || ARGV.include?("--#{o[:name]}")
+            if ARGV.include?(o[:short]) || ARGV.include?("--#{o[:name]}")
+              options[o[:name].to_sym] = true
+            end
             ARGV.delete_if { |op| op == o[:short] || op ==  "--#{o[:name]}"}
           elsif o[:multiple]
             value = []
@@ -55,11 +59,17 @@ module OptionParser
               break if o[:type] != :args && ARGV[0].start_with?("-")
               value << ARGV.shift
             end
-            error("Error: missing argument #{o[:name]}", @conditions) if value.empty? && o[:mandatory]
-            options[o[:name].to_sym] = value if value.any?
+            if value.empty? && o[:mandatory]
+              error("Error: missing argument #{o[:name]}", @conditions[rule])
+            end
+            if value.any?
+              options[o[:name].to_sym] = value
+            end
           elsif !o[:multiple]
             value = ARGV.shift if !ARGV.empty? && !ARGV.first.start_with?("-")
-            error("Error: missing argument #{o[:name]}", @conditions) if value.nil? && o[:mandatory]
+            if value.nil? && o[:mandatory]
+              error("Error: missing argument #{o[:name]}", @conditions[rule])
+            end
             options[o[:name].to_sym] = value
           end
         end if @conditions[rule][:options]

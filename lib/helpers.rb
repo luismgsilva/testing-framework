@@ -2,109 +2,120 @@ require_relative './exceptions.rb'
 
 class Helper
 
-  def self.get_status(status_path_file = DirManager.get_status_file)
-    raise("StatusFileDoesNotExists") unless File.exists?(status_path_file)
-    return JSON.parse(File.read(status_path_file))
-  end
-  def self.reset_status()
-    r = {}
-    Config.instance.tasks.keys.each { |task| r[task] = 9 }
-    File.write(DirManager.get_status_file, JSON.pretty_generate(r))
-  end
-  def self.set_previd(status, task)
-    path = "#{DirManager.get_persistent_ws_path}/#{task}"
-    if !system "cd #{path} ; git rev-parse HEAD 2> /dev/null 1> .previd"
-      system "echo 'first' > #{path}/.previd"
-    end
-  end
+
+  # def self.set_previd(status, task)
+  #   path = "#{DirManager.get_persistent_ws_path}/#{task}"
+  #   if !system "cd #{path} ; git rev-parse HEAD 2> /dev/null 1> .previd"
+  #     system "echo 'first' > #{path}/.previd"
+  #   end
+  # end
 
   def self.is_json_valid(msg)
     begin
       JSON.parse(msg)
       return true
-    rescue JSON::ParserError => e
+    rescue JSON::ParserError
       return false
     end
   end
   
-  def self.set_status(result, task)
-    data = "{}"
-    file = DirManager.get_status_file
-
-    if(File.exists?(file))
-      File.open(file, "a") do |f|
-        f.flock(File::LOCK_EX)
-        status = JSON.parse(data, symbolize_names: true)
-        status[task] = result && 0 || 1
-        DirManager.create_dir_for_file(file)
-        f.puts JSON.pretty_generate(status)
-      end
-    end
-    puts (result) ? "Passed" : "Failed"
-  end
-
-  def self.set_status(result, task)
-    data = "{}"
-    file = DirManager.get_status_file
-    data = File.read(file) if(File.exists?(file))
-    status = JSON.parse(data, symbolize_names: true)
-    status[task] = result && 0 || 1
-    DirManager.create_dir_for_file(file)
-    File.write(file, JSON.pretty_generate(status))
-    puts (result) ? "Passed" : "Failed"
-  end
-
 
   def self.set_internal_vars(task)
-    VarManager.instance.set_internal("@SOURCE", "#{DirManager.pwd}/sources")
-    VarManager.instance.set_internal("@ROOT", "#{DirManager.pwd}")
-    VarManager.instance.set_internal("@BUILDNAME", task.to_s)
-    VarManager.instance.set_internal("@PERSISTENT_WS", "#{DirManager.get_persistent_ws_path}/#{task.to_s}")
-    VarManager.instance.set_internal("@WORKSPACE", "#{DirManager.get_build_path}/#{task}")
-    VarManager.instance.set_internal("@CONFIG_SOURCE_PATH", "#{DirManager.get_framework_path}/.config")
+    task = task.to_s
+    VarManager.instance.set_internal("@SOURCE", DirManager.get_sources_path)
+    VarManager.instance.set_internal("@ROOT", DirManager.pwd)
+    VarManager.instance.set_internal("@BUILDNAME", task)
+    VarManager.instance.set_internal("@PERSISTENT_WS",
+      "#{DirManager.get_persistent_ws_path}/#{task}")
+    VarManager.instance.set_internal("@WORKSPACE",
+      "#{DirManager.get_build_path}/#{task}")
+    VarManager.instance.set_internal("@CONFIG_SOURCE_PATH",
+      DirManager.get_config_path)
   end
 
-  def self.check_environment(args)
-    return if (%w[init clone] & args).any? || args.empty?
-    if !File.directory? (DirManager.get_framework_path)
-      raise Ex::NotBSFDirectoryException
+  def self.input_user(message, option = nil)
+    puts message
+    if option
+      puts option
     end
-  end
+    loop do
+      input = $stdin.gets.chomp.downcase
 
-  def self.lock_mg(type, args)
-    return if !(%w[execute set git sources clean publish] & args).any?
-    if type == :LOCK
-        lock()
-    elsif type == :UNLOCK
-      unlock()
-    end
-  end
-
-  def self.lock
-    lock_file = DirManager.get_lock_file
-    if File.exists? lock_file
-      if (`uptime -s` == `cat #{lock_file}`)
-        raise Ex::CouldNotGetLockException
-      end
-      unlock()
-    end
-    system "uptime -s > #{lock_file}"
-  end
-
-  def self.unlock
-    lock_file = DirManager.get_lock_file
-    return system("rm -rf #{lock_file}") if File.exists? lock_file
-  end
-
-  def self.input_user(msg, option = nil)
-    puts msg
-    puts option if !option.nil?
-    loop {
-      input = $stdin.gets.chomp
-      break if %w[y yes].any? input
-      if %w[n no].any? input
+      case input
+      when 'y', 'yes'
+        break
+      when 'n', 'no'
         raise Ex::ProcessTerminatedByUserException
       end
-    }
+    end
+  end
+
+  def self.tasks_list()
+    to_print = ""
+    Config.instance.tasks.keys.each do |task|
+      description = Config.instance.task_description(task)
+	    to_print += "#{task}:\n    Description: #{description}\n"
+    end
+    return to_print
+  end
+
+
+  # ------------
+
+  def validate_task_execution(file, target)
+    previd = File.read("#{file[:path]}/tasks/#{target}/.previd").chomp
+    unless previd == file[:prev_commit_id]
+      raise Ex::TaskNotExecutedException.new(target)
+    end
+  end
+  def validate_commit_id(commit_id)
+    if check_commit_id(commit_id)
+      raise Ex::CommitIdNotValidException.new(commit_id)
+    end
+  end
+  def validate_target(target)
+    unless Config.instance.tasks.keys.include?(target.to_sym)
+      raise Ex::TargetNotInSystemException.new(target)
+    end
+  end
+  def validate_report_support(target)
+    if Config.instance.report(target).nil?
+      raise Ex::ReportNotSupportedException
+    end
+  end
+  def validate_commit_ids(options)
+    options.each do |hash|
+      if check_commit_id(hash)
+        raise Ex::CommitIdNotValidException.new(hash)
+      end
+    end
+  end
+  def check_commit_id(commit_id)
+    cmd = "git -C #{DirManager.get_framework_path}
+            rev-parse #{commit_id} > /dev/null 2>&1"
+
+    return !system(cmd)
+  end
+  def cleanup_worktrees(files)
+    files.each_pair do |k, v|
+      GitManager.remove_worktree(v[:path])
+    end
+  end
+  def validate_target_specified(target)
+    unless target
+      raise Ex::TargetNotSpecifiedException
+    end
+  end
+
+  def validate_target_in_system(target)
+      unless Config.instance.tasks.keys.include?(target.to_sym)
+          raise Ex::TargetNotInSystemException.new(target)
+      end
+  end
+
+  def validate_task_exists(task)
+    unless Config.instance.tasks.keys.include?(task.to_sym)
+      raise Ex::TaskNotFoundException.new(task)
+    end
   end
 end

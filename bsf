@@ -1,9 +1,21 @@
 #!/usr/bin/env ruby
-require_relative './lib/option_parser.rb'
-require_relative './lib/manager.rb'
-require_relative './lib/helpers.rb'
-require_relative './lib/webserver.rb'
-require_relative './lib/exceptions.rb'
+# require_relative './lib/option_parser.rb'
+# require_relative './lib/helpers.rb'
+# require_relative './lib/webserver.rb'
+# require_relative './lib/exceptions.rb'
+# require_relative './lib/directory_manager.rb'
+# require_relative './lib/git_manager.rb'
+# require_relative './lib/lock.rb'
+# require_relative './lib/build.rb'
+# require_relative './lib/.rb'
+
+
+
+
+Dir.glob(File.join(__dir__, 'lib', '*.rb')).each do |file|
+  require_relative file
+end
+
 
 class Main
   def initialize
@@ -15,15 +27,20 @@ class Main
     end
 
     begin
-      Helper.check_environment(args)
-      Helper.lock_mg(:LOCK, args)
+      unless args.empty? || (%w[init clone] & args).any?
+        unless File.directory? (DirManager.get_framework_path)
+          raise Ex::NotBSFDirectoryException
+        end
+      end
+
+      Lock.lock(args)
 
       opt = OptionParser::OptionParser.new
       option_parser_default_initializer(opt)
       option_parser_conditions_initializer(opt)
-      Helper.lock_mg(:UNLOCK, args)
+      Lock.unlock(args)
     rescue Exception => e
-      Helper.lock_mg(:UNLOCK, args)
+      Lock.unlock(args)
       puts e.message
       exit -1
     end
@@ -31,9 +48,9 @@ class Main
 
   def option_parser_conditions_initializer(opt)
     # sources get
-    opt.condition_option("sources get",     { name: "task", multiple: true } )
     opt.condition_option("sources get",     { name: "single-branch", short: "-s", type: :option } )
-    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:task], opts[:"single-branch"]) }
+    opt.condition_option("sources get",     { name: "sources", multiple: true } )
+    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources], opts[:"single-branch"]) }
     # sources delete
     opt.condition_option("sources delete",  { name: "task", mandatory: true } )
     opt.condition_action("sources delete")  { |opts| Source.delete_sources(opts[:task]) }
@@ -57,7 +74,7 @@ class Main
     opt.condition_action("vars")            { |opts| VarManager.instance.var_list() }
     # tasks
     opt.condition_help("tasks",             "Lists all the tasks and its description")
-    opt.condition_action("tasks")           { |opts| puts Manager.instance.tasks_list() }
+    opt.condition_action("tasks")           { |opts| puts Helper.tasks_list() }
     # set
     opt.condition_option("set",             { name: "option", type: :equal, mandatory: true } )
     opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:option][0], opts[:option][1]); VarManager.instance.save }
@@ -65,13 +82,13 @@ class Main
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
-    opt.condition_action("execute")         { |opts| Manager.instance.build(opts[:task], opts[:confirm], opts[:parallel]) }
+    opt.condition_action("execute")         { |opts| Build.build(opts[:task], opts[:confirm], opts[:parallel]) }
     # publish
-    opt.condition_action("publish")         { |opts| Manager.instance.publish() }
+    opt.condition_action("publish")         { |opts| Publish.publish() }
     # diff
     opt.condition_option("diff",            { name: "hash1", mandatory: true })
     opt.condition_option("diff",            { name: "hash2", mandatory: true })
-    opt.condition_action("diff")            { |opts| puts Manager.instance.diff(opts[:hash1], opts[:hash2]) }
+    opt.condition_action("diff")            { |opts| puts Diff.diff(opts[:hash1], opts[:hash2]) }
     # git
     opt.condition_option("git",             { name: "gitcommand", mandatory: true, multiple: true } )
     opt.condition_action("git")             { |opts| GitManager.internal_git(opts[:gitcommand]) }
@@ -81,14 +98,14 @@ class Main
     # compare
     opt.condition_option("compare",         { name: "task", mandatory: true } )
     opt.condition_option("compare",         { name: "args", mandatory: true, multiple: true, type: :args} )
-    opt.condition_action("compare")         { |opts| puts Manager.instance.compare(opts[:task], opts[:args]) }
+    opt.condition_action("compare")         { |opts| puts Compare.compare(opts[:task], opts[:args]) }
     # compare all
     opt.condition_option("compareall",      { name: "args", mandatory: true, multiple: true, type: :args} )
-    opt.condition_action("compareall")      { |opts| puts Manager.instance.agregator(opts[:args]) }
+    opt.condition_action("compareall")      { |opts| puts Compare.agregator(opts[:args]) }
     # report
     opt.condition_option("report",          { name: "task", mandatory: true } )
     opt.condition_option("report",          { name: "args", multiple: true, type: :args} )
-    opt.condition_action("report")          { |opts| puts Manager.instance.report(opts[:task], opts[:args]) }
+    opt.condition_action("report")          { |opts| puts Report.report(opts[:task], opts[:args]) }
     # server
     opt.condition_option("server",          { name: "options", multiple: true, type: :args} )
     opt.condition_action("server")          { |opts| WebServer.execute(opts[:options]) }
@@ -96,23 +113,29 @@ class Main
     opt.condition_option("log",             { name: "follow", short: "-f", type: :option })
     opt.condition_option("log",             { name: "task", mandatory: true })
     opt.condition_option("log",             { name: "hash" })
-    opt.condition_action("log")             { |opts| puts Manager.instance.log(opts[:task], opts[:hash], opts[:follow]) }
+    opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash], opts[:follow]) }
     # status
     opt.condition_option("status",          { name: "hash" })
-    opt.condition_action("status")          { |opts| puts Manager.instance.status(opts[:hash]) }
+    opt.condition_action("status")          { |opts| puts Status.status(opts[:hash]) }
     #clean
     opt.condition_option("clean",           { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean",           { name: "task", multiple: true } )
-    opt.condition_action("clean")           { |opts| Manager.instance.clean(opts[:task], opts[:confirm]) }
+    opt.condition_action("clean")           { |opts| Clean.clean(opts[:task], opts[:confirm]) }
     # ls
     opt.condition_option("ls",              { name: "task", mandatory: true } )
     opt.condition_option("ls",              { name: "hash" } )
-    opt.condition_action("ls")              { |opts| puts Manager.instance.ls(opts[:task], opts[:hash]) }
+    opt.condition_action("ls")              { |opts| puts Ls.ls(opts[:task], opts[:hash]) }
     # cat
     opt.condition_option("cat",             { name: "task", mandatory: true } )
     opt.condition_option("cat",             { name: "file", mandatory: true } )
     opt.condition_option("cat",             { name: "hash" } )
-    opt.condition_action("cat")             { |opts| puts Manager.instance.cat(opts[:task], opts[:hash], opts[:file]) }
+    opt.condition_action("cat")             { |opts| puts Cat.cat(opts[:task], opts[:hash], opts[:file]) }
+
+    opt.condition_option("cp",              { name: "task", mandatory: true } )
+    opt.condition_option("cp",              { name: "file", mandatory: true } )
+    opt.condition_option("cp",              { name: "path", mandatory: true } )
+    opt.condition_option("cp",              { name: "hash" } )
+    opt.condition_action("cp")              { |opts| puts opts }
 
     opt.parse(ARGV)
 

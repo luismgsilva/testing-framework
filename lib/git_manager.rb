@@ -41,11 +41,11 @@ class GitManager
     end
   end
   def self.search_log(args)
-    branch = `cd #{DirManager.get_framework_path} ; git branch --show-current`
-    hashs = `cd #{DirManager.get_framework_path} ; git rev-list #{branch}`.split()
+    branch = `git -C #{DirManager.get_framework_path} branch --show-current`
+    hashs = `git -C #{DirManager.get_framework_path} rev-list #{branch}`.split()
     cloned = hashs.clone
     hashs.each do |hash|
-      header_msg = `cd #{DirManager.get_framework_path} ; git log -n 1 --pretty=format:%s #{hash}`
+      header_msg = `git -C #{DirManager.get_framework_path} log -n 1 --pretty=format:%s #{hash}`
       header_msg = JSON.parse(header_msg)
       args.each do |arg|
         arg =~ /(.+)=(.+)/
@@ -54,20 +54,18 @@ class GitManager
     end
 
     if !cloned.empty?
-      return `cd #{DirManager.get_framework_path} ; git show #{cloned.join(" ")} -q`
+      return `git -C #{DirManager.get_framework_path} show #{cloned.join(" ")} -q`
     else return "No Matches"
    end
   end
 
   def self.create_env()
     raise Ex::MustInitializeGitRepoException
-
   end
 
   def self.internal_git(command)
     command = command.join(" ") if command.class == Array
 
-    # begin
     if command =~ /commit/
       msg = "WARNING: This instruction may result in internal conflicts with the commit messages.\nDo you wish to continue? [y/n]"
       Helper.input_user(msg)
@@ -105,16 +103,4 @@ class GitManager
     return File.directory? path_to_clone
   end
 
-  def self.diff(hash1, hash2)
-    (hash1.keys | hash2.keys).each_with_object({}) do |k, r|
-      if hash1[k] != hash2[k]
-        if hash1[k].is_a?(Hash) && hash2[k].is_a?(Hash)
-          r[k] = diff(hash1[k], hash2[k])
-        else
-          r[k] = [hash1[k], hash2[k]]
-        end
-      end
-      r
-    end
-  end
 end
