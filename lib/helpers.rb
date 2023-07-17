@@ -2,14 +2,6 @@ require_relative './exceptions.rb'
 
 class Helper
 
-
-  # def self.set_previd(status, task)
-  #   path = "#{DirManager.get_persistent_ws_path}/#{task}"
-  #   if !system "cd #{path} ; git rev-parse HEAD 2> /dev/null 1> .previd"
-  #     system "echo 'first' > #{path}/.previd"
-  #   end
-  # end
-
   def self.is_json_valid(msg)
     begin
       JSON.parse(msg)
@@ -18,7 +10,6 @@ class Helper
       return false
     end
   end
-  
 
   def self.set_internal_vars(task)
     task = task.to_s

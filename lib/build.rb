@@ -1,12 +1,8 @@
-# require_relative './helpers.rb'
-# require_relative './exceptions.rb'
-
 class Build
 
   def self.filter_task(data, selected_tasks)
     selected_tasks.map! &:to_sym
     res =  selected_tasks - data.keys
-    # if !res.empty?
     if res
       raise Ex::InvalidOptionException(res[0])
     end
@@ -14,7 +10,6 @@ class Build
   end
 
   def self.pre_condition(data, skip)
-    # failed_tasks = []
     failed_tasks = {}
     data.each_pair do |task, command|
       next if command[:pre_condition].nil?
@@ -22,19 +17,14 @@ class Build
       conditions = VarManager.instance.prepare_data(command[:pre_condition])
 
       out = File.open(DirManager.get_log_file(task), "w")
-      # to_execute = [to_execute] if to_execute.class == String
       Array(conditions).each do |condition|
         system("echo 'BSF Executing: #{condition}' ; #{condition}", out: out, err: out)
-        # failed_tasks << { task: task, pre_condition: condition } if !$?.success?
-        # failed_tasks << { task: pre_condition: condition }
         failed_tasks[task] = condition if !$?.success?
       end
     end
 
     if failed_tasks.any?
-      # data.select! { |task, command| command[:pre_condition].nil? || !failed_tasks.any? { |failed| failed[:task] == task } }
       data = data[data.keys - failed_tasks.keys]
-      # puts "One or more pre-conditions have failed:"
       msg = "One or more pre-conditions have failed:\n"
       failed_tasks.each do |task, condition|
         msg += "- #{task}: #{condition}\n"
@@ -68,13 +58,9 @@ class Build
 
 
     out = File.open(DirManager.get_log_file(task), "w")
-    # new
-    # original_stdout = $stdout
-    # $stdout.reopen(out)
 
     puts "Executing #{task}.."
     status = nil
-    # to_execute = [to_execute] if to_execute.class == String
     Array(to_execute).each do |execute|
       status = system "echo 'BSF Executing: #{execute}' ;
                        cd #{workspace_dir} ;
@@ -82,8 +68,6 @@ class Build
       break if !status
     end
 
-    #new
-    # $stdout.reopen(original_stdout)
     out.close()
 
     Status.set_status(status, task)
