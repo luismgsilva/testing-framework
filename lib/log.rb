@@ -13,9 +13,12 @@ module Log
     end 
   
     if is_tail
-      system("tail -f #{log_file}")
+      cmd = "tail -f #{log_file}"
+      Helper.execute(cmd)
     else
-      to_print = `cat #{log_file}`
+      cmd = "cat #{log_file}"
+      to_print = Helper.return_execute(cmd)
+
     end
   
     GitManager.internal_git("worktree remove #{worktree_dir}") if commit_id

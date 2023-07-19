@@ -53,60 +53,68 @@ class Helper
 
   # ------------
 
-  def validate_task_execution(file, target)
+  def self.validate_task_execution(file, target)
     previd = File.read("#{file[:path]}/tasks/#{target}/.previd").chomp
     unless previd == file[:prev_commit_id]
       raise Ex::TaskNotExecutedException.new(target)
     end
   end
-  def validate_commit_id(commit_id)
+  def self.validate_commit_id(commit_id)
     if check_commit_id(commit_id)
       raise Ex::CommitIdNotValidException.new(commit_id)
     end
   end
-  def validate_target(target)
+  def self.validate_target(target)
     unless Config.instance.tasks.keys.include?(target.to_sym)
       raise Ex::TargetNotInSystemException.new(target)
     end
   end
-  def validate_report_support(target)
+  def self.validate_report_support(target)
     if Config.instance.report(target).nil?
       raise Ex::ReportNotSupportedException
     end
   end
-  def validate_commit_ids(options)
+  def self.validate_commit_ids(options)
     options.each do |hash|
       if check_commit_id(hash)
         raise Ex::CommitIdNotValidException.new(hash)
       end
     end
   end
-  def check_commit_id(commit_id)
-    cmd = "git -C #{DirManager.get_framework_path}
-            rev-parse #{commit_id} > /dev/null 2>&1"
-
-    return !system(cmd)
+  def self.check_commit_id(commit_id)
+    cmd = "git -C #{DirManager.get_framework_path} rev-parse #{commit_id} > /dev/null 2>&1"
+    return !execute(cmd)
   end
-  def cleanup_worktrees(files)
-    files.each_pair do |k, v|
-      GitManager.remove_worktree(v[:path])
+  def self.cleanup_worktrees(files)
+    files.each_pair do |hash, dir|
+      GitManager.remove_worktree(dir)
     end
   end
-  def validate_target_specified(target)
+  def self.validate_target_specified(target)
     unless target
       raise Ex::TargetNotSpecifiedException
     end
   end
 
-  def validate_target_in_system(target)
+  def self.validate_target_in_system(target)
       unless Config.instance.tasks.keys.include?(target.to_sym)
           raise Ex::TargetNotInSystemException.new(target)
       end
   end
 
-  def validate_task_exists(task)
+  def self.validate_task_exists(task)
     unless Config.instance.tasks.keys.include?(task.to_sym)
       raise Ex::TaskNotFoundException.new(task)
     end
+  end
+
+  @debug = false
+  def self.execute(cmd)
+    puts "BSF Executing: #{cmd}" if @debug
+    return system(cmd)
+  end
+  def self.return_execute(cmd)
+    puts "BSF Executing: #{cmd}" if @debug
+    return `#{cmd}`
   end
 end

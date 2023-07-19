@@ -120,6 +120,11 @@ module Ex
         end
     end
 
+    class ComparatorNotFoundForTargetException < StandardError
+        def initialize(target)
+            super("ERROR: Target comparator not found - #{target}")
+        end
+    end
     class API_TEMP < StandardError
         def initialize(msg)
             super(msg)
