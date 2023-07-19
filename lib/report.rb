@@ -27,7 +27,7 @@ module Report
     Helper.set_internal_vars(target)
     commands = Config.instance.report(target)
     to_execute = VarManager.instance.prepare_data(commands)
-    to_print = `#{to_execute}`
+    to_print = Helper.return_execute(to_execute)
   
     GitManager.remove_worktree(file[:path]) if commit_id
   

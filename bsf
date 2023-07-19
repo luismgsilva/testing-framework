@@ -103,7 +103,7 @@ class Main
     opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash], opts[:follow]) }
     # status
     opt.condition_option("status",          { name: "hash" })
-    opt.condition_action("status")          { |opts| puts Status.status(opts[:hash]) }
+    opt.condition_action("status")          { |opts| puts Status.get_task_status(opts[:hash]) }
     #clean
     opt.condition_option("clean",           { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean",           { name: "task", multiple: true } )

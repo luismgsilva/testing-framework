@@ -31,10 +31,11 @@ class Source
 
   def self.delete_sources(task)
     source_dir = DirManager.get_source_path(task)
-    if !File.directory? source_dir 
+    unless File.directory? source_dir
       raise Ex::NotRegisteredSourceException
     end
-    system "rm -rf #{source_dir}"
+    cmd = "rm -rf #{source_dir}"
+    Helper.execute(cmd)
   end
 
   def self.list_sources()
@@ -45,7 +46,7 @@ class Source
   end
 
   def self.show_sources()
-    if !File.directory? DirManager.get_sources_path
+    unless File.directory? DirManager.get_sources_path
       raise Ex::NoSourcesClonedYetException
     end
     Dir.children("#{$PWD}/sources").sort.each { |source| puts source }

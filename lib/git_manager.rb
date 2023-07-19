@@ -9,12 +9,13 @@ class GitManager
   end
 
   def valid_repo(repo)
-    return system "git ls-remote #{repo} > /dev/null 2>&1"
+    return Helper.execute("git ls-remote #{repo} > /dev/null 2>&1")
   end
 
-  def self.executing(to_execute)
-    return system to_execute
-  end
+  # def self.executing(to_execute)
+  #   puts to_execute
+  #   return system to_execute
+  # end
 
 
   def self.publish(commit_msg)
@@ -22,12 +23,12 @@ class GitManager
 
     create_env() if !DirManager.directory_exists(git_path)
 
-    to_execute = "cd #{DirManager.get_framework_path} ;
-                  git add . ;
-                  git commit -m '#{commit_msg}'"
+    to_execute = "git -C #{DirManager.get_framework_path} add . ;
+                  git -C #{DirManager.get_framework_path} commit -m '#{commit_msg}'"
 
-    Helper.reset_status if executing(to_execute)
-    system "rm -rf #{DirManager.get_build_path}/*"
+    Helper.reset_status if Helper.execute(to_execute)
+    cmd = "rm -rf #{DirManager.get_build_path}/*"
+    Helper.execute(cmd)
   end
 
 
@@ -41,20 +42,25 @@ class GitManager
     end
   end
   def self.search_log(args)
-    branch = `git -C #{DirManager.get_framework_path} branch --show-current`
-    hashs = `git -C #{DirManager.get_framework_path} rev-list #{branch}`.split()
+    cmd = "git -C #{DirManager.get_framework_path} branch --show-current"
+    branch = Helper.return_execute(cmd)
+
+    cmd = "git -C #{DirManager.get_framework_path} rev-list #{branch}"
+    hashs = Helper.return_execute(cmd).split()
+
     cloned = hashs.clone
     hashs.each do |hash|
-      header_msg = `git -C #{DirManager.get_framework_path} log -n 1 --pretty=format:%s #{hash}`
-      header_msg = JSON.parse(header_msg)
+      cmd = "git -C #{DirManager.get_framework_path} log -n 1 --pretty=format:%s #{hash}"
+      header_msg = JSON.parse(Helper.return_execute(cmd))
       args.each do |arg|
         arg =~ /(.+)=(.+)/
         cloned.delete(hash) if nested_hash_search(header_msg, $1, $2).nil?
       end
     end
 
-    if !cloned.empty?
-      return `git -C #{DirManager.get_framework_path} show #{cloned.join(" ")} -q`
+    if cloned
+      cmd = "git -C #{DirManager.get_framework_path} show #{cloned.join(" ")} -q"
+      return Helper.return_execute(cmd)
     else return "No Matches"
    end
   end
@@ -71,13 +77,14 @@ class GitManager
       Helper.input_user(msg)
     end
 
-    to_execute = "cd #{DirManager.get_framework_path} ; git #{command}"
-    result = executing(to_execute)
+    to_execute = "git -C #{DirManager.get_framework_path} #{command}"
+    result = Helper.execute(to_execute)
   end
 
   def self.get_clone_framework(repo, dir)
     DirManager.create_dir("#{dir}")
-    system "cd #{dir} ; git clone #{repo} .bsf"
+    cmd = "git -C #{dir} clone #{repo} .bsf"
+    Helper.execute(cmd)
   end
 
   def self.create_worktree(hash, dir)
@@ -96,7 +103,7 @@ class GitManager
     to_execute += " --branch #{opts[:branch]}" if opts[:branch]
     to_execute += " --depth 1 --single-branch" if opts[:single]
 
-    system (to_execute)
+    Helper.execute(to_execute)
   end
 
   def if_already_exists(path_to_clone)

@@ -27,7 +27,7 @@ class Config
     if File.directory? DirManager.get_framework_path
       raise Ex::AlreadyBSFDirectoryException
     end
-    unless valid_json("#{config_source_path}/config.json")
+    unless valid_config("#{config_source_path}/config.json")
       raise Ex::InvalidConfigFileException
     end
 
@@ -41,7 +41,7 @@ class Config
     Helper.reset_status()
   end
   
-  def self.valid_json(file_path)
+  def self.valid_config(file_path)
     begin 
       config = JSON.parse(File.read(file_path), symbolize_names: true)
       return false if !config.has_key? :sources
@@ -60,7 +60,7 @@ class Config
     system ("rm -f #{dir_to}/vars.json")
   end 
 
-  def required_variables
+  def required_variables()
     str = JSON.pretty_generate(@config)
     exprex = /\$var\(([^)]+)\)/
     return str.scan(exprex).flatten.uniq

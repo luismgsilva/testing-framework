@@ -1,6 +1,6 @@
 module Status
 
-  def get_task_status(commit_id = nil)
+  def self.get_task_status(commit_id = nil)
     mapping = {
       9 => "Not Executed",
       0 => "Passed",
@@ -10,14 +10,14 @@ module Status
     if commit_id
       worktree_dir = DirManager.get_worktree_dir()
       GitManager.create_worktree(commit_id, workspace_dir)
-      status = Helper.get_status("#{worktree_dir}/status.json")
+      status = get_status("#{worktree_dir}/status.json")
       GitManager.remove_worktree(workspace_dir)
     else
-      status = Helper.get_status
+      status = get_status
     end
   
     status_info = status.map do |task, result|
-      result_text = status_mapping[result]
+      result_text = mapping[result]
       "#{result_text}: #{task}"
     end.join("\n")
 
@@ -42,6 +42,7 @@ module Status
 
   def self.get_status(status_path_file = DirManager.get_status_file)
     unless File.exists?(status_path_file)
+      puts status_path_file
       raise Ex::StatusFileDoesNotExistsException
     end
     return JSON.parse(File.read(status_path_file))

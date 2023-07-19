@@ -38,7 +38,8 @@ class WebServer < Sinatra::Base
 
     post "/github" do
       data = JSON.parse(request.body.read, symbolize_names: true)
-      system("echo '#{JSON.pretty_generate(data)}' > /tmp/github")
+      cmd = "echo '#{JSON.pretty_generate(data)}' > /tmp/github"
+      Helper.system(cmd)
     end
    
   # GET
