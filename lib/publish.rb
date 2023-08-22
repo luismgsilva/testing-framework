@@ -21,10 +21,10 @@ module Publish
         commit_msg = JSON.parse(output, symbolize_names: true)
         place_holder.merge!(commit_msg)
       end
-      
+
       commit_msg_hash[task] = place_holder
     end
-    
+
     GitManager.publish(JSON.pretty_generate(commit_msg_hash))
   end
 end

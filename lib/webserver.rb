@@ -41,7 +41,7 @@ class WebServer < Sinatra::Base
       cmd = "echo '#{JSON.pretty_generate(data)}' > /tmp/github"
       Helper.system(cmd)
     end
-   
+
   # GET
     # `bsf sources list`
     get "/sources/list" do
@@ -140,7 +140,7 @@ class WebServer < Sinatra::Base
         Config.save_config(opts[:path])
       end
     end
-    
+
     # `bsf execute ${task}`
     post "/execute" do
       handler("Execution finished") do |opts|
