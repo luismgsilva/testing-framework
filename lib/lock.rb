@@ -2,7 +2,7 @@ module Lock
 
   def self.blocklist(args)
     block_list = [
-      "execute", "set", "git", 
+      "execute", "set", "git",
       "sources", "clean", "publish"
     ]
 
@@ -29,11 +29,11 @@ module Lock
       end
       unlock()
     end
-  
+
     cmd = "uptime -s > #{lock_file}"
     Helper.execute(cmd)
   end
-  
+
   def self.unlock(args)
     return if blocklist(args)
 

@@ -2,7 +2,7 @@ module Cat
   def cat(task, commit_id, file)
     Helper.validate_commit_id(commit_id)
     Helper.validate_task_exists(task)
-    
+
     unless commit_id
       cmd = "cat #{DirManager.get_persistent_ws_path}/#{task}/#{file}"
       return Helper.return_execute(cmd)

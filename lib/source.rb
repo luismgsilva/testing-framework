@@ -28,7 +28,6 @@ class Source
     end
   end
 
-
   def self.delete_sources(task)
     source_dir = DirManager.get_source_path(task)
     unless File.directory? source_dir

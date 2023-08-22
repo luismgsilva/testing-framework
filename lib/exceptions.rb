@@ -6,7 +6,7 @@ module Ex
     end
     class ProcessTerminatedByUserException < StandardError
         def initialize
-            super("ERROR: Process terminated by User")
+            super("ERROR: Got a INT signal, interrupted by user")
         end
     end
     class NotBSFDirectoryException < StandardError

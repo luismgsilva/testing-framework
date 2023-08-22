@@ -6,7 +6,7 @@ module Status
       0 => "Passed",
       1 => "Failed"
     }
-  
+
     if commit_id
       worktree_dir = DirManager.get_worktree_dir()
       GitManager.create_worktree(commit_id, workspace_dir)
@@ -15,7 +15,7 @@ module Status
     else
       status = get_status
     end
-  
+
     status_info = status.map do |task, result|
       result_text = mapping[result]
       "#{result_text}: #{task}"
@@ -23,7 +23,7 @@ module Status
 
     return status_info
   end
-  
+
   def self.set_status(result, task)
     data = "{}"
     file = DirManager.get_status_file

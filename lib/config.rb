@@ -40,9 +40,9 @@ class Config
 
     Helper.reset_status()
   end
-  
+
   def self.valid_config(file_path)
-    begin 
+    begin
       config = JSON.parse(File.read(file_path), symbolize_names: true)
       return false if !config.has_key? :sources
       return false if !config.has_key? :tasks
@@ -58,7 +58,7 @@ class Config
     DirManager.create_dir(dir_to)
     DirManager.copy_folder("#{dir_from}/*", dir_to)
     system ("rm -f #{dir_to}/vars.json")
-  end 
+  end
 
   def required_variables()
     str = JSON.pretty_generate(@config)
@@ -83,7 +83,7 @@ class Config
   end
   def comparator_agregator()
     @config[:comparator_agregator]
-  end 
+  end
   def sources
     @config[:sources]
   end
