@@ -58,7 +58,7 @@ class Main
     opt.condition_option("init",            { name: "folderpath", mandatory: true } )
     opt.condition_action("init")            { |opts| Config.init_bsf(opts[:folderpath]) }
     # vars
-    opt.condition_action("vars")            { |opts| VarManager.instance.var_list() }
+    opt.condition_action("vars")            { |opts| puts VarManager.instance.var_list() }
     # tasks
     opt.condition_help("tasks",             "Lists all the tasks and its description")
     opt.condition_action("tasks")           { |opts| puts Helper.tasks_list() }
@@ -95,7 +95,7 @@ class Main
     opt.condition_action("report")          { |opts| puts Report.report(opts[:task], opts[:args]) }
     # server
     opt.condition_option("server",          { name: "options", multiple: true, type: :args} )
-    opt.condition_action("server")          { |opts| WebServer.execute(opts[:options]) }
+    opt.condition_action("server")          { |opts| WebServer2.execute(opts[:options]) }
     # log
     opt.condition_option("log",             { name: "follow", short: "-f", type: :option })
     opt.condition_option("log",             { name: "task", mandatory: true })
