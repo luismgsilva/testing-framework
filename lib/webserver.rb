@@ -1,6 +1,6 @@
 require 'sinatra/base'
 
-class WebServer < Sinatra::Base 
+class WebServer < Sinatra::Base
 
   set :default_content_type, 'application/json'
 
@@ -76,7 +76,7 @@ class WebServer < Sinatra::Base
     # `bsf status`
     get "/status/:hash" do
       get_handler do
-        contents = Manager.instance.status(params[:hash])
+        contents = Status.get_task_status(params[:hash])
         data = []
         contents.each_line do |line|
           status, name = line.chomp.split(': ')
@@ -88,7 +88,7 @@ class WebServer < Sinatra::Base
     # `bsf ls <task> {commit_id}` WORKS
     get "/ls/:task" do
       data = {}
-      data[:files] = Manager.instance.ls(params[:task], nil).split("\n")
+      data[:files] = Ls.ls(params[:task], params[:hash]).split("\n")
 
       content_type :json
       data.to_json

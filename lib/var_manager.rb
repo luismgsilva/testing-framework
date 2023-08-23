@@ -29,15 +29,17 @@ class VarManager
     var_list = Config.instance.required_variables
     params = @vars.keys + internal_vars
 
+    str = ""
     var_list.each do |var|
       if var.start_with?("@") && !params.include?(var)
-        puts "Internal Variable #{var} is invalid"
+        str += "Internal Variable #{var} is invalid\n"
       elsif !var.start_with?("@") && !params.include?(var)
-        puts "Input Variable #{var} not defined"
+        str +=  "Input Variable #{var} not defined\n"
       elsif !var.start_with?("@") && params.include?(var)
-        puts "Input Variable #{var} defined: #{@vars[var]}"
+        str +=  "Input Variable #{var} defined: #{@vars[var]}\n"
       end
     end
+    return str
   end
 
   def get(varname)
