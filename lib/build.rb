@@ -3,20 +3,22 @@ class Build
   def self.filter_task(data, selected_tasks)
     selected_tasks.map! &:to_sym
     res =  selected_tasks - data.keys
-    if res
-      raise Ex::InvalidOptionException(res[0])
+    if !res.empty?
+      raise Ex::InvalidOptionException.new(res[0])
     end
     return data.slice(*selected_tasks)
   end
 
   def self.pre_condition(data, skip)
+    mutex = Mutex.new
     failed_tasks = {}
     data.each_pair do |task, command|
       next if command[:pre_condition].nil?
+      mutex.lock
       Helper.set_internal_vars(task)
       conditions = VarManager.instance.prepare_data(command[:pre_condition])
-
       out = File.open(DirManager.get_log_file(task), "w")
+      mutex.unlock
       Array(conditions).each do |condition|
         system("echo 'BSF Executing: #{condition}' ; #{condition}", out: out, err: out)
         failed_tasks[task] = condition if !$?.success?
@@ -49,29 +51,35 @@ class Build
   end
 
   def self.execute(task, command)
+    mutex = Mutex.new
+    mutex.lock
     Helper.set_internal_vars(task)
-
     to_execute = VarManager.instance.prepare_data(command[:execute])
     workspace_dir = VarManager.instance.get("@WORKSPACE")
     DirManager.create_dir(workspace_dir)
     DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
-
+    mutex.unlock
 
     out = File.open(DirManager.get_log_file(task), "w")
 
     puts "Executing #{task}.."
     status = nil
     Array(to_execute).each do |execute|
-      status = system "echo 'BSF Executing: #{execute}' ;
+      tmp = true
+      if tmp
+      status = system("echo 'BSF Executing: #{execute}' ;
                        cd #{workspace_dir} ;
-                       #{execute}", out: out, err: out
+                       #{execute}", out: out, err: out)
+      else
+        status = system("echo 'BSF Executing: #{execute}' >> #{DirManager.get_log_file(task)} ; cd #{workspace_dir} ; #{execute} 2>&1 | tee -a #{DirManager.get_log_file(task)}")
+      end
       break if !status
     end
 
     out.close()
 
     Status.set_status(status, task)
-    set_previd(status, task)
+    #set_previd(status, task)
   end
 
 

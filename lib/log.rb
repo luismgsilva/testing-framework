@@ -9,7 +9,7 @@ module Log
     end
 
     unless File.exists?(log_file)
-      raise Ex::TaskNotFoundException
+      raise Ex::TaskNotFoundException.new(task)
     end
 
     if is_tail

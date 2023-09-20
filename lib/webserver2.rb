@@ -37,14 +37,6 @@ class WebServer2 < Sinatra::Base
     end if opts
 
 
-    github_block = Proc.new do
-      data = JSON.parse(request.body.read, symbolize_names: true)
-      cmd = "echo '#{JSON.pretty_generate(data)}' > /tmp/github"
-      Helper.system(cmd)
-    end
-    post "/github", &github_block
-
-
   # GET
     # `bsf sources list`
     get "/sources/list" do
@@ -57,9 +49,7 @@ class WebServer2 < Sinatra::Base
     get "/vars" do
       begin
         # Why? Im tired.
-        data = { text: VarManager.instance.var_list().split("\n") }
-        content_type :json
-        data.to_json
+        data = VarManager.instance.var_list()
       rescue Exception => e
         { code: 22, message: e }.to_json
       end
@@ -88,8 +78,11 @@ class WebServer2 < Sinatra::Base
     # `bsf log $<task>`
     get "/log/:task/?:hash?" do
       begin
-        contents = Log.log(opts[:task], opts[:hash], nil)
-        { log: contents }
+        contents = Log.log(params[:task], params[:hash], nil)
+        # data = { log: contents }
+        # content_type :json
+        # data.to_json
+        contents
       rescue Exception => e
         { code: 22, message: e }.to_json
       end
@@ -124,7 +117,6 @@ class WebServer2 < Sinatra::Base
         { code: 22, message: e }.to_json
       end
     end
-
     # ----------------------------------------------
 
 

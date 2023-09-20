@@ -1,5 +1,5 @@
 module Publish
-  def publish
+  def self.publish
     persistent_ws = DirManager.get_persistent_ws_path
     commit_msg_hash = {}
     status = JSON.parse(File.read(DirManager.get_status_file))
@@ -10,10 +10,10 @@ module Publish
       next if to_execute.nil?
 
       Helper.set_internal_vars(task)
+      to_execute = VarManager.instance.prepare_data(to_execute)
       place_holder = {}
 
       Array(to_execute).each do |execute|
-
         output = Helper.return_execute(execute)
         unless $?.success?
           raise Ex::PublishCommandException.new(execute)

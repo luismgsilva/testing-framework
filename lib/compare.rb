@@ -1,28 +1,32 @@
 module Compare
 
     def self.compare_new(target, options, files, is_agregator = false)
-
       if is_agregator && Config.instance.comparator(target).nil?
         return
       end
 
-      add_local_file(files) if files.length == 1
-
-      Helper.set_internal_vars(target)
-
+      if files.length == 1
+       dir = DirManager.get_framework_path()
+       files["LOCAL"] = dir
+      end
       files.each_pair do |hash, dir|
         status = Status.get_status("#{dir}/status.json")
-        if status[target] = 0
+        if status[target] == 0
           options += " -h #{dir}/tasks/#{target}/:#{hash} "
         else
           options += " -h :#{hash} "
         end
       end
 
-      VarManager.instance.set_internal("@OPTIONS", options)
-      commands = Config.instance.comparator(target)
-      to_execute = VarManager.instance.prepare_data(commands)
+      mutex = Mutex.new
+      to_execute = ""
 
+      mutex.synchronize do
+        Helper.set_internal_vars(target)
+        VarManager.instance.set_internal("@OPTIONS", options)
+        commands = Config.instance.comparator(target)
+        to_execute = VarManager.instance.prepare_data(commands)
+      end
       to_print = Helper.return_execute(to_execute)
 
       to_print
@@ -68,16 +72,19 @@ module Compare
       end
     end
 
-
     def self.agregator_new(options, files)
 
+      mutex = Mutex.new
       agregator = {}
       threads = []
-      Config.instance.tasks.keys.each do |task|
+      Config.instance.tasks.keys.each do |task_|
+        task = task_.to_s
         todo = Thread.new(task) { |this|
-          comparator_found = compare_new(task, options + " -o json", files, true)
+          comparator_found = compare_new(task, options + " -o json ", files, true)
           next if !comparator_found
-          agregator.merge!(JSON.parse(comparator_found))
+          mutex.synchronize do
+            agregator.merge!(JSON.parse(comparator_found))
+          end
         }
       threads << todo
       end
