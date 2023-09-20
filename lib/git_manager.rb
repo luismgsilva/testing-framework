@@ -26,7 +26,7 @@ class GitManager
     to_execute = "git -C #{DirManager.get_framework_path} add . ;
                   git -C #{DirManager.get_framework_path} commit -m '#{commit_msg}'"
 
-    Helper.reset_status if Helper.execute(to_execute)
+    Status.reset_status if Helper.execute(to_execute)
     cmd = "rm -rf #{DirManager.get_build_path}/*"
     Helper.execute(cmd)
   end
@@ -89,10 +89,12 @@ class GitManager
 
   def self.create_worktree(hash, dir)
     internal_git("worktree add #{dir} #{hash} > /dev/null 2>&1")
+    #internal_git("worktree add -f #{dir} #{hash}")
   end
 
   def self.remove_worktree(dir)
     internal_git("worktree remove #{dir} > /dev/null 2>&1")
+    #internal_git("worktree remove -f #{dir}")
   end
 
   def self.get_clone(opts)

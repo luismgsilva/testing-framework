@@ -25,32 +25,29 @@ module Status
   end
 
   def self.set_status(result, task)
-    data = "{}"
-    file = DirManager.get_status_file
+    status = get_status()
+    data = {}
 
-    if(File.exists?(file))
-      File.open(file, "a") do |f|
-        f.flock(File::LOCK_EX)
-        status = JSON.parse(data, symbolize_names: true)
-        status[task] = result && 0 || 1
-        DirManager.create_dir_for_file(file)
-        f.puts JSON.pretty_generate(status)
-      end
-    end
+    mutex = Mutex.new
+    mutex.lock
+    status[task.to_sym] = result && 0 || 1
+    File.write(DirManager.get_status_file, JSON.pretty_generate(status))
+    mutex.unlock
+
     puts (result) ? "Passed" : "Failed"
   end
 
   def self.get_status(status_path_file = DirManager.get_status_file)
     unless File.exists?(status_path_file)
-      puts status_path_file
       raise Ex::StatusFileDoesNotExistsException
     end
     return JSON.parse(File.read(status_path_file))
   end
+
   def self.reset_status(task = nil)
-    status = get_status
+    status = get_status()
     if task
-      status[task] = 9
+      status[task.to_s] = 9
     else
       status.transform_values! { 9 }
     end
