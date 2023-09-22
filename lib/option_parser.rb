@@ -77,8 +77,8 @@ module OptionParser
         error("Error: invalid command #{rule}", @conditions)
       end
 
-      puts "DEBUG: Rule: #{rule}"
-      puts "DEBUG: Options: #{options}"
+      #puts "DEBUG: Rule: #{rule}"
+      #puts "DEBUG: Options: #{options}"
 
       @conditions[rule][:action].call(options)
     end

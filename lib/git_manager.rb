@@ -19,12 +19,13 @@ class GitManager
 
 
   def self.publish(commit_msg)
-    git_path = "#{DirManager.get_framework_path}/.git"
+    framework_path = DirManager.get_framework_path
+    git_path = "#{framework_path}/.git"
 
     create_env() if !DirManager.directory_exists(git_path)
 
-    to_execute = "git -C #{DirManager.get_framework_path} add . ;
-                  git -C #{DirManager.get_framework_path} commit -m '#{commit_msg}'"
+    to_execute = "git -C #{framework_path} add . ;
+                  git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
 
     Status.reset_status if Helper.execute(to_execute)
     cmd = "rm -rf #{DirManager.get_build_path}/*"

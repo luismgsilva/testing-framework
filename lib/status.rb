@@ -53,4 +53,13 @@ module Status
     end
     File.write(DirManager.get_status_file, JSON.pretty_generate(status))
   end
+
+  def self.init_status(tasks, status_path_file = DirManager.get_status_file)
+    status = {}
+    tasks.each do |task|
+      status[task] = 9
+    end
+    File.write(status_path_file, JSON.pretty_generate(status))
+  end
+
 end

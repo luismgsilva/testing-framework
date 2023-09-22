@@ -66,7 +66,7 @@ class VarManager
   end
 
   def process_variables(str)
-    return str.gsub(/\$var\(([A-Z0-9_@]+)\)/) do |m|
+    return str.gsub(/\$var\(([a-zA-Z0-9_@]+)\)/) do |m|
       var_name = $1
       if @vars[var_name].nil?
         raise Ex::InputVariableNotSetException.new(var_name)
