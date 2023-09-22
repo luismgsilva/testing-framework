@@ -8,6 +8,7 @@ module Status
     }
 
     if commit_id
+      Helper.validate_commit_id(commit_id)
       worktree_dir = DirManager.get_worktree_dir()
       GitManager.create_worktree(commit_id, worktree_dir)
       status = get_status("#{worktree_dir}/status.json")
@@ -41,13 +42,13 @@ module Status
     unless File.exists?(status_path_file)
       raise Ex::StatusFileDoesNotExistsException
     end
-    return JSON.parse(File.read(status_path_file))
+    return JSON.parse(File.read(status_path_file), symbolize_names: true)
   end
 
   def self.reset_status(task = nil)
     status = get_status()
     if task
-      status[task.to_s] = 9
+      status[task.to_sym] = 9
     else
       status.transform_values! { 9 }
     end

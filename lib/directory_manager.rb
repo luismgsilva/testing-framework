@@ -2,8 +2,18 @@ module DirManager
 
   FRAMEWORK = ".bsf"
 
+  def self.change_directory(path)
+    Dir.chdir(path)
+  end
   def self.pwd
     Dir.getwd()
+  end
+  def self.make_absolute_path(path)
+    if File.absolute_path?(path)
+      return path
+    else
+      return File.expand_path(path)
+    end
   end
   def self.get_config_path
     "#{pwd}/#{FRAMEWORK}/.config"
@@ -62,7 +72,6 @@ module DirManager
     system "echo 'Clearing #{task}..' ;
             rm -rf #{get_build_path}/#{task} ;
             rm -rf #{get_logs_path}/*"
-
   end
 
   def self.get_worktree_dir()

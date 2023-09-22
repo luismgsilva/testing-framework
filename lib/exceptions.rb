@@ -1,130 +1,150 @@
 module Ex
     class InvalidOptionException < StandardError
         def initialize(option)
-            super("ERROR: Option Invalid #{option}")
+            super("bsf: Option Invalid #{option}")
         end
     end
     class ProcessTerminatedByUserException < StandardError
         def initialize
-            super("ERROR: Got a INT signal, interrupted by user")
+            super("bsf: Got a INT signal, interrupted by user")
         end
     end
     class NotBSFDirectoryException < StandardError
         def initialize
-            super "ERROR: Not a bsf environment"
+            super "bsf: Not a bsf environment"
         end
     end
     class AlreadyBSFDirectoryException < StandardError
         def initialize
-            super "ERROR: Already a bsf environment"
+            super "bsf: Already a bsf environment"
         end
     end
     class InvalidConfigFileException < StandardError
         def initialize
-            super "ERROR: Invalid configuration file"
+            super "bsf: Invalid configuration file"
         end
     end
     class PathMustContainConfigFileException < StandardError
         def initialize
-            super "ERROR: Path must contain config.json file"
+            super "bsf: Path must contain config.json file"
         end
     end
     class CouldNotCopyFilesException < StandardError
         def initialize
-            super "ERROR: Could not copy files"
+            super "bsf: Could not copy files"
         end
     end
     class MustInitializeGitRepoException < StandardError
         def initialize
-            super "ERROR: Must initialize git repository: `bsf git init`"
+            super "bsf: Must initialize git repository: `bsf git init`"
         end
     end
     class CouldNotGetLockException < StandardError
         def initialize
-            super "ERROR: Could not get lock"
+            super "bsf: Could not get lock"
         end
     end
     class TargetNotInSystemException < StandardError
         def initialize(target)
-            super "ERROR: Target not in system - #{target}"
+            super "bsf: Target not in system - #{target}"
         end
     end
     class ReportNotSupportedException < StandardError
         def initialize
-            super "ERROR: Report not supported"
+            super "bsf: Report not supported"
         end
     end
     class CommitIdNotValidException < StandardError
         def initialize(commit_id)
-            super "ERROR: Commit Id not valid - #{commit_id}"
+            super "bsf: Commit Id not valid - #{commit_id}"
         end
     end
     class TaskNotExecutedException < StandardError
         def initialize(task)
-            super "ERROR: Task not executed - #{task}"
+            super "bsf: Task not executed - #{task}"
         end
     end
     class TargetNotSpecifiedException < StandardError
         def initialize
-            super "ERROR: Target not specified"
+            super "bsf: Target not specified"
         end
     end
     class AgregatorNotSupportedException < StandardError
         def initialize
-            super "ERROR: Agregator not supported"
+            super "bsf: Agregator not supported"
         end
     end
     class TaskNotFoundException < StandardError
         def initialize(task)
-            super "ERROR: Task not found - #{task}"
+            super "bsf: Task not found - #{task}"
         end
     end
     class PublishCommandException < StandardError
         def initialize(command)
-            super "ERROR: Publish command - #{command}"
+            super "bsf: Publish command - #{command}"
         end
     end
     class StatusFileDoesNotExistsException < StandardError
         def initialize
-            super "ERROR: Nothing executed yet"
+            super "bsf: Nothing executed yet"
         end
     end
     class NoSourcesClonedYetException < StandardError
         def initialize
-            super "ERROR: No sources cloned yet"
+            super "bsf: No sources cloned yet"
         end
     end
     class NotEditableVariableException < StandardError
         def initialize
-            super "ERROR: Not a editable variable"
+            super "bsf: Not a editable variable"
         end
     end
     class NotAVariableException < StandardError
         def initialize(variable)
-            super "ERROR: Not a variable - #{variable}"
+            super "bsf: Not a variable - #{variable}"
         end
     end
     class InputVariableNotSetException < StandardError
         def initialize(variable)
-            super "ERROR: Input variable not set - #{variable}"
+            super "bsf: Input variable not set - #{variable}"
         end
     end
     class NotRegisteredSourceException < StandardError
         def initialize(source)
-            super("ERROR: Not a registered Source: #{source}")
+            super("bsf: Not a registered Source: #{source}")
         end
     end
     class NothingToCloneException < StandardError
         def initialize
-            super("ERROR: Nothing to clone.")
+            super("bsf: Nothing to clone.")
         end
     end
 
     class ComparatorNotFoundForTargetException < StandardError
         def initialize(target)
-            super("ERROR: Target comparator not found - #{target}")
+            super("bsf: Target comparator not found - #{target}")
         end
     end
+
+    class DirectoryDoesNotExistException < StandardError
+        def initialize(path)
+            super("bsf: Directory does not exist - #{path}")
+        end
+    end
+
+    class MissingArgumentException < StandardError
+        def initialize(arg)
+            super("bsf: Missing argument - #{arg}. See 'bsf'.")
+        end
+    end
+
+    class InvalidCommandException < StandardError
+        def initialize(command)
+            #super("bsf: Invalid command - #{command}")
+            super("bsf: '#{command}' is not a bsf command. See 'bsf'.")
+        end
+    end
+
     class API_TEMP < StandardError
         def initialize(msg)
             super(msg)

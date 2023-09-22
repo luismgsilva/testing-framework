@@ -11,7 +11,7 @@ module Compare
       end
       files.each_pair do |hash, dir|
         status = Status.get_status("#{dir}/status.json")
-        if status[target] == 0
+        if status[target.to_sym] == 0
           options += " -h #{dir}/tasks/#{target}/:#{hash} "
         else
           options += " -h :#{hash} "
@@ -33,12 +33,13 @@ module Compare
     end
 
     def self.compare(target, options)
+      Helper.validate_target_specified(target)
+      Helper.validate_target_in_system(target)
+
       if Config.instance.comparator(target).nil?
         raise Ex::ComparatorNotFoundForTargetException
       end
 
-      Helper.validate_target_specified(target)
-      Helper.validate_target_in_system(target)
 
       hashs = options.shift.split(":")
       options = options.join(" ")
@@ -66,6 +67,7 @@ module Compare
 
     def self.get_files(hashs)
       files = hashs.each_with_object({}) do |hash, result|
+        Helper.validate_commit_id(hash)
         dir = DirManager.get_compare_dir(hash)
         GitManager.create_worktree(hash, dir)
         result[hash] = dir

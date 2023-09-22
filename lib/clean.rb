@@ -2,6 +2,7 @@ module Clean
 
   def self.clean(tasks = nil, skip_flag = nil)
     tasks = Config.instance.tasks.keys if tasks.nil?
+    Helper.validate_target(tasks)
     if skip_flag.nil?
       msg = "Are you sure you want to clean: [y/n]"
       Helper.input_user(msg, tasks)
