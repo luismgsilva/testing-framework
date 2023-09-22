@@ -7,7 +7,6 @@ end
 class Main
   def initialize
     args = ARGV.clone
-    ENV["RUBYLIB"] = "#{File.dirname(__FILE__)}/lib"
     Signal.trap("SIGPIPE") do
       Helper.lock_mg(:UNLOCK, args)
       exit

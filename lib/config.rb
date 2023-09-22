@@ -38,7 +38,9 @@ class Config
       raise Ex::CouldNotCopyFilesException
     end
 
-    Helper.reset_status()
+    file = "#{DirManager.get_config_path}/config.json"
+    @config = JSON.parse(File.read(file), symbolize_names: true)
+    Status.init_status(@config[:tasks].keys)
   end
 
   def self.valid_config(file_path)
