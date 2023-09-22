@@ -51,8 +51,26 @@ class Helper
   end
 
 
+  def self.find_change_directory_arg(args)
+    index = args.index("-C")
+    if index && index + 1 < args.length
+      path = args[index + 1]
+      args.delete_at(index + 1)
+      args.delete_at(index)
+      return path, args
+    end
+#    nil
+    return DirManager.pwd, args
+  end
+
   # ------------
 
+  def self.validate_path(path)
+    path = DirManager.make_absolute_path(path)
+    if !DirManager.directory_exists(path)
+      raise Ex::DirectoryDoesNotExistException.new(path)
+    end
+  end
   def self.validate_task_execution(file, target)
     previd = File.read("#{file[:path]}/tasks/#{target}/.previd").chomp
     unless previd == file[:prev_commit_id]
@@ -64,9 +82,11 @@ class Helper
       raise Ex::CommitIdNotValidException.new(commit_id)
     end
   end
-  def self.validate_target(target)
-    unless Config.instance.tasks.keys.include?(target.to_sym)
-      raise Ex::TargetNotInSystemException.new(target)
+  def self.validate_target(targets)
+    Array(targets).each do | target |
+      unless Config.instance.tasks.keys.include?(target.to_sym)
+        raise Ex::TargetNotInSystemException.new(target)
+      end
     end
   end
   def self.validate_report_support(target)
@@ -95,13 +115,11 @@ class Helper
       raise Ex::TargetNotSpecifiedException
     end
   end
-
   def self.validate_target_in_system(target)
       unless Config.instance.tasks.keys.include?(target.to_sym)
           raise Ex::TargetNotInSystemException.new(target)
       end
   end
-
   def self.validate_task_exists(task)
     unless Config.instance.tasks.keys.include?(task.to_sym)
       raise Ex::TaskNotFoundException.new(task)
@@ -110,11 +128,11 @@ class Helper
 
   @debug = false
   def self.execute(cmd)
-    puts "BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if @debug
     return system(cmd)
   end
   def self.return_execute(cmd)
-    puts "BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if @debug
     return `#{cmd}`
   end
 end

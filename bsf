@@ -13,6 +13,11 @@ class Main
     end
 
     begin
+
+      path, args = Helper.find_change_directory_arg(args)
+      Helper.validate_path(path)
+      DirManager.change_directory(path)
+
       unless args.empty? || (%w[init clone] & args).any?
         unless File.directory? (DirManager.get_framework_path)
           raise Ex::NotBSFDirectoryException
@@ -23,20 +28,20 @@ class Main
 
       opt = OptionParser::OptionParser.new
       option_parser_default_initializer(opt)
-      option_parser_conditions_initializer(opt)
+      option_parser_conditions_initializer(opt, args)
       Lock.unlock(args)
     rescue Exception => e
       Lock.unlock(args)
-      puts e.message
+      puts(e.message)
       exit -1
     end
   end
 
-  def option_parser_conditions_initializer(opt)
+  def option_parser_conditions_initializer(opt, args)
     # sources get
-    opt.condition_option("sources get",     { name: "single-branch", short: "-s", type: :option } )
+    opt.condition_option("sources get",     { name: "shallow", short: "-s", type: :option } )
     opt.condition_option("sources get",     { name: "sources", multiple: true } )
-    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources], opts[:"single-branch"]) }
+    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources], opts[:"shallow"]) }
     # sources delete
     opt.condition_option("sources delete",  { name: "task", mandatory: true } )
     opt.condition_action("sources delete")  { |opts| Source.delete_sources(opts[:task]) }
@@ -123,34 +128,8 @@ class Main
     opt.condition_option("cp",              { name: "hash" } )
     opt.condition_action("cp")              { |opts| puts opts }
 
-    opt.parse(ARGV)
+    opt.parse(args)
 
-    # opt.condition("sources get {-s} ${name}")               { |opts| Source.get_sources(opts[:name], opts[:s]) }
-    # opt.condition("sources delete <name>")                  { |opts| Source.delete_sources(opts[:name]) }
-    # opt.condition("sources list")                           { |opts| Source.list_sources() }
-    # opt.condition("sources show")                           { |opts| Source.show_sources() }
-    # opt.condition("saveconfig <pathtosave>")                { |opts| Config.save_config(opts[:pathtosave]) }
-    # opt.condition("clone <gitrepo> <dir>")                  { |opts| GitManager.get_clone_framework(opts[:gitrepo], opts[:dir]) }
-    # opt.condition("init <folderpath>")                      { |opts| Config.init_bsf(opts[:folderpath]) }
-    # opt.condition("vars")                                   { |opts| VarManager.instance.var_list() }
-    # opt.condition("tasks")                                  { |opts| puts Manager.instance.tasks_list() }
-    # opt.condition("set <var>=<value>")                      { |opts| VarManager.instance.set(opts[:var], opts[:value]); VarManager.instance.save }
-    # opt.condition("execute {-y} ${task}")                   { |opts| Manager.instance.build(opts[:task], opts[:y]) }
-    # opt.condition("publish")                                { |opts| Manager.instance.publish() }
-    # opt.condition("diff <hash1> {hash2}")                   { |opts| puts Manager.instance.diff(opts[:hash1], opts[:hash2]) }
-    # opt.condition("git $<gitcommand>")                      { |opts| GitManager.internal_git(opts[:gitcommand]) }
-    # opt.condition("search $<search>")                  	    { |opts| puts GitManager.search_log(opts[:search]) }
-    # opt.condition("compare all $<args>")    		            { |opts| puts Manager.instance.agregator(opts[:args]) }
-    # opt.condition("compare <task> $<args>")    		          { |opts| puts Manager.instance.compare(opts[:task], opts[:args]) }
-    # opt.condition("report <task> ${args}")                  { |opts| puts Manager.instance.report(opts[:task], opts[:args]) }
-    # opt.condition("server ${options}")                      { |opts| WebServer.execute(opts[:options]) }
-    # opt.condition("log {-f} <task> {hash}")                 { |opts| puts Manager.instance.log(opts[:task], opts[:hash], opts[:f]) }
-    # opt.condition("status {hash} ")                         { |opts| puts Manager.instance.status(opts[:hash]) }
-    # opt.condition("clean {-y} ${task}")                     { |opts| Manager.instance.clean(opts[:task], opts[:y]) }
-    # opt.condition("ls <task> {commit_id}")                  { |opts| puts Manager.instance.ls(opts[:task], opts[:commit_id]) }
-    # opt.condition("cat <task> <file> {commit_id}")          { |opts| puts Manager.instance.cat(opts[:task], opts[:commit_id], opts[:file]) }
-
-    # opt.parse(ARGV)
   end
 
 
@@ -158,56 +137,55 @@ class Main
 
     opt.default do
       puts <<-EOF
-usage: bsf <command>
+usage: bsf [-C <path>] <command>
 
 These are the BSF commands used in various situations:
 
 Start a working Environment
-    init <folderpath>                  Create a new Framework Environment
-    clone <gitrepo> <dir>              Clone an existing Framework Environment to a directory
+    init <folderpath>                         Create a new Framework Environment.
+    clone <gitrepo> <dir>                     Clone an existing Framework Environment to a directory.
 
 Work with task/s
-    execute ${task}                    Execute the task's execution instruction
-    log {-f} <task>                    Print or follow the task's log
-    status                             Lists the status of all tasks
-    tasks                              Lists all the tasks and its description
+    execute [tasks]                           Execute the tasks' :execution property.
+      -p | --parallel                           Execute each task concurrently.
+      -y | --confirm                            Confirm to continue.
+    log <task>                                Print the log of a task.
+      -f | --follow                             Follow the log of a task.
+    status                                    Lists the status of all tasks.
+    tasks                                     Lists all the tasks and their description.
 
 Work with Input Variables
-    set <var>=<value>                  Defines the value to the input variable
-    vars                               Lists all the Input Variables and its value
-
-Work with lists
-    tasks                              Lists all the tasks and its description
-    vars                               Lists all Input Variables
+    set <name>=<value>                        Defines the value to the Input Variable.
+    vars                                      Lists all the Input Variables and their value.
 
 Work with the Git Repositories
-    sources get {-s} ${name}           Clone a new Source to the framework environment (-s for single branch)
-    sources delete <name>              Delete a Source from the framework environment
-    sources list                       List all the Sources in the config file
-    sources show                       Show all cloned the Sources in the framework environment
+    sources get [names]                       Clone a new Source to the framework environment.
+      -s | --shallow                            Clone the source as shallow. (--depth 1 --single-branch)
+    sources delete <name>                     Delete a Source from the framework environment.
+    sources list                              List all the Sources in the config file.
+    sources show                              Show all cloned the Sources in the framework environment.
 
 Work with Git
-    git $<gitcommand>                  Execute internal git commands
-    publish                            Adds and commits with a specific commit message to local git repository
-    search $<var>=<value>              Searchs on git log's commit message
-    diff <hash1> <hash2>               Find the differences in the commit messages between two commit ids
-    ls <task> {commit_id}              List all files within persistent workspace
-    cat <task> <file> {commit_id}      Print a file from a task's persistent workspace
+    git <gitcommands>                         Execute internal git commands.
+    publish                                   Adds and commits with a specific commit message to local git repository.
+    search <var>=<value>                      Searchs on git log's commit message.
+    diff <hash1> <hash2>                      Find the differences in the commit messages between two commit ids.
+    ls <task> [commitid]                      List all files within persistent workspace.
+    cat <task> <file> [commitid]              Print a file from a task's persistent workspace.
 
 Work with comparasion
-    compare <task> $<args>             Compares test from different commits
-    compare all $<args>                Compares all tests from different commits
+    compare <task> [hash1]:[hash2] [args]     Compares task between different commits. (Uses local if hash not provided)
+      --help                                    Print help from compare script.
+    compareall [hash1]:[hash2] [args]         Compares all tasks between different commits. (Uses local if hash not provided)
 
 Work with reporting
-    report <task> ${args}              Print a report on the given task
+    report <task> [args]                      Print a report on the given task,
+      --help                                    Print help from report script.
 
-Extra commands
-    saveconfig <pathtosave>            Saves internal config with dependencies to pathtosave
-    clean {-y} ${task}                 Cleans workspace folder, logs and resets status
-
-
-
-	{} Optional Argument		<> Mandatory Argument		$ Capable of multiple Arguments
+Miscellaneous
+    saveconfig <pathtosave>                   Saves internal config with dependencies to pathtosave.
+    clean [tasks]                             Cleans workspace folder, logs and resets status.
+      -y | --confirm                            Confirm to continue.
 
 EOF
     end

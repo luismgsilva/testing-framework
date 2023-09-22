@@ -71,8 +71,10 @@ class GitManager
   end
 
   def self.internal_git(command)
+    #p command
     command = command.join(" ") if command.class == Array
-
+    #p command
+    #exit
     if command =~ /commit/
       msg = "WARNING: This instruction may result in internal conflicts with the commit messages.\nDo you wish to continue? [y/n]"
       Helper.input_user(msg)
@@ -89,7 +91,7 @@ class GitManager
   end
 
   def self.create_worktree(hash, dir)
-    internal_git("worktree add #{dir} #{hash} > /dev/null 2>&1")
+    internal_git("worktree add -f #{dir} #{hash} > /dev/null 2>&1")
     #internal_git("worktree add -f #{dir} #{hash}")
   end
 
