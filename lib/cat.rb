@@ -1,5 +1,5 @@
 module Cat
-  def cat(task, commit_id, file)
+  def self.cat(task, commit_id, file)
     Helper.validate_commit_id(commit_id)
     Helper.validate_task_exists(task)
 
@@ -9,10 +9,10 @@ module Cat
     end
 
     tmp_dir = DirManager.get_worktree_dir()
-    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id}")
+    GitManager.create_worktree(commit_id, tmp_dir)
     cmd = "cat #{tmp_dir}/tasks/#{task}/#{file}"
     to_print = Helper.return_execute(cmd)
-    GitManager.internal_git("worktree remove #{tmp_dir}")
+    GitManager.remove_worktree(tmp_dir)
     to_print
   end
 end

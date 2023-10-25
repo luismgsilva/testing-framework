@@ -7,9 +7,9 @@ module Lock
     ]
 
     if block_list.any? { |arg| args.include?(arg) }
-      return true
-    else
       return false
+    else
+      return true
     end
   end
 
@@ -35,7 +35,7 @@ module Lock
   end
 
   def self.unlock(args)
-    return if blocklist(args)
+    return unless blocklist(args)
 
     lock_file = DirManager.get_lock_file
     if File.exists?(lock_file)

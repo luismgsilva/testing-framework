@@ -52,17 +52,17 @@ class Build
     end
   end
 
-  def self.build(selected_tasks, skip, parallel, api = false)
+  def self.build(selected_tasks, skip, parallel, is_verbose, api = false)
     data = Config.instance.tasks
     data = filter_task(data, selected_tasks) if selected_tasks
     DirManager.create_dir(DirManager.get_logs_path)
 
     validate_variables(data)
     pre_condition(data, skip)
-    parallel_verifier(data, parallel)
+    parallel_verifier(data, parallel, is_verbose)
   end
 
-  def self.execute(task, command)
+  def self.execute(task, command, is_verbose)
     mutex = Mutex.new
     mutex.lock
     Helper.set_internal_vars(task)
@@ -77,6 +77,7 @@ class Build
     puts "Executing #{task}.."
     status = nil
     Array(to_execute).each do |execute|
+      puts execute if is_verbose
       tmp = true
       if tmp
       status = system("echo 'BSF Executing: #{execute}' ;
@@ -95,14 +96,14 @@ class Build
   end
 
 
-  def self.parallel_verifier(data, parallel)
+  def self.parallel_verifier(data, parallel, is_verbose)
     task_list = []
     data.each do |task, command|
       if parallel
-        todo = Thread.new(task) { |this| execute(task, command) }
+        todo = Thread.new(task) { |this| execute(task, command, is_verbose) }
         task_list << todo
       else
-        execute(task, command)
+        execute(task, command, is_verbose)
       end
     end
     task_list.each { |task| task.join } if parallel

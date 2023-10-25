@@ -9,10 +9,10 @@ module Ls
     end
 
     tmp_dir = DirManager.get_worktree_dir()
-    GitManager.internal_git("worktree add #{tmp_dir} #{commit_id} > /dev/null 2>&1")
+    GitManager.create_worktree(commit_id, tmp_dir)
     cmd = "ls #{tmp_dir}/tasks/#{task}"
     to_print = Helper.return_execute(cmd)
-    GitManager.internal_git("worktree remove #{tmp_dir} > /dev/null 2>&1")
+    GitManager.remove_worktree(tmp_dir)
     to_print
   end
 end

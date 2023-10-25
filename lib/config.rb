@@ -22,6 +22,7 @@ class Config
   def self.init_bsf(config_source_path)
     internal_config_path = DirManager.get_config_path()
     unless DirManager.file_exists("#{config_source_path}/config.json")
+      puts config_source_path
       raise Ex::PathMustContainConfigFileException
     end
     if File.directory? DirManager.get_framework_path

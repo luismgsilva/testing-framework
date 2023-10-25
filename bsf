@@ -70,10 +70,11 @@ class Main
     opt.condition_option("set",             { name: "option", type: :equal, mandatory: true } )
     opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:option][0], opts[:option][1]); VarManager.instance.save }
     # execute
+    opt.condition_option("execute",         { name: "verbose", short: "-v", type: :option } )
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
-    opt.condition_action("execute")         { |opts| Build.build(opts[:task], opts[:confirm], opts[:parallel]) }
+    opt.condition_action("execute")         { |opts| Build.build(opts[:task], opts[:confirm], opts[:parallel], opts[:verbose]) }
     # publish
     opt.condition_action("publish")         { |opts| Publish.publish() }
     # diff
@@ -81,7 +82,7 @@ class Main
     opt.condition_option("diff",            { name: "hash2", mandatory: true })
     opt.condition_action("diff")            { |opts| puts Diff.diff(opts[:hash1], opts[:hash2]) }
     # git
-    opt.condition_option("git",             { name: "gitcommand", mandatory: true, multiple: true } )
+    opt.condition_option("git",             { name: "gitcommand", mandatory: true, multiple: true, type: :args} )
     opt.condition_action("git")             { |opts| GitManager.internal_git(opts[:gitcommand]) }
     # search  $<options>
     opt.condition_option("search",          { name: "options", mandatory: true, multiple: true } )
