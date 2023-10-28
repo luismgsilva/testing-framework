@@ -8,13 +8,14 @@ class Main
   def initialize
     args = ARGV.clone
     Signal.trap("SIGPIPE") do
-      Helper.lock_mg(:UNLOCK, args)
+      Lock.unlock(args)
       exit
     end
 
     begin
 
       path, args = Helper.find_change_directory_arg(args)
+      lock_args = args.clone
       Helper.validate_path(path)
       DirManager.change_directory(path)
 
@@ -24,14 +25,17 @@ class Main
         end
       end
 
-      Lock.lock(args)
+      Lock.lock(lock_args)
 
       opt = OptionParser::OptionParser.new
       option_parser_default_initializer(opt)
       option_parser_conditions_initializer(opt, args)
-      Lock.unlock(args)
+      Lock.unlock(lock_args)
+    rescue Ex::CouldNotGetLockException => e
+      puts(e.message)
+      exit -1
     rescue Exception => e
-      Lock.unlock(args)
+      Lock.unlock(lock_args)
       puts(e.message)
       exit -1
     end

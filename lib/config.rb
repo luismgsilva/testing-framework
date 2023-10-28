@@ -16,11 +16,11 @@ class Config
   def initialize
     file = "#{DirManager.get_config_path}/config.json"
     raise Ex::NotBSFDirectoryException if !File.exists?(file)
-    @config = JSON.parse(File.read(file), symbolize_names: true)
+    # Dont like having to call "Config" class.
+    @config = self.class.load_config()
   end
 
   def self.init_bsf(config_source_path)
-    internal_config_path = DirManager.get_config_path()
     unless DirManager.file_exists("#{config_source_path}/config.json")
       puts config_source_path
       raise Ex::PathMustContainConfigFileException
@@ -28,30 +28,47 @@ class Config
     if File.directory? DirManager.get_framework_path
       raise Ex::AlreadyBSFDirectoryException
     end
-    unless valid_config("#{config_source_path}/config.json")
-      raise Ex::InvalidConfigFileException
-    end
 
+    @config = load_config("#{config_source_path}/config.json")
+
+    internal_config_path = DirManager.get_config_path()
     DirManager.create_dir(internal_config_path)
 
-    unless DirManager.copy_folder("#{config_source_path}/*",
-                                    internal_config_path)
+    unless DirManager.copy_folder("#{config_source_path}/*", internal_config_path)
       raise Ex::CouldNotCopyFilesException
     end
 
-    file = "#{DirManager.get_config_path}/config.json"
-    @config = JSON.parse(File.read(file), symbolize_names: true)
     Status.init_status(@config[:tasks].keys)
   end
 
-  def self.valid_config(file_path)
+
+  def self.load_config(config_file = "#{DirManager.get_config_path}/config.json")
+    config = validate_config(config_file)
+    unless config
+        raise Ex::InvalidConfigFileException
+    end
+
+    Dir.glob(File.join(DirManager.get_config_path, "*.frag")) do | frag_file |
+      frag_config = validate_config(frag_file)
+      unless frag_config
+        raise Ex::InvalidFragConfigFileException.new(File.basename(frag_file))
+      end
+      config[:sources].merge!(frag_config[:sources])
+      config[:tasks].merge!(frag_config[:tasks])
+    end
+
+    return config
+  end
+
+
+  def self.validate_config(file_path)
     begin
       config = JSON.parse(File.read(file_path), symbolize_names: true)
-      return false if !config.has_key? :sources
-      return false if !config.has_key? :tasks
-      return true
+      unless config[:sources] && config[:tasks]
+        return false
+      end
+      return config
     rescue => e
-      puts e.message
       return false
     end
   end

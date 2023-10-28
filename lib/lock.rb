@@ -27,7 +27,7 @@ module Lock
       if uptime == lock_file_content
         raise Ex::CouldNotGetLockException
       end
-      unlock()
+      unlock(args)
     end
 
     cmd = "uptime -s > #{lock_file}"
@@ -35,11 +35,11 @@ module Lock
   end
 
   def self.unlock(args)
-    return unless blocklist(args)
+    return if blocklist(args)
 
     lock_file = DirManager.get_lock_file
     if File.exists?(lock_file)
-      cmd = "rm -rf #{lock_file}"
+      cmd = "rm -f #{lock_file}"
       return Helper.execute(cmd)
     end
   end

@@ -24,6 +24,11 @@ module Ex
             super "bsf: Invalid configuration file"
         end
     end
+    class InvalidFragConfigFileException < StandardError
+        def initialize(frag)
+            super "bsf: Invalid fragment configuration file - #{frag}"
+        end
+    end
     class PathMustContainConfigFileException < StandardError
         def initialize
             super "bsf: Path must contain config.json file"
