@@ -20,8 +20,8 @@ class VarManager
   def internal_vars
     [ "@SOURCE", "@BUILDNAME", "@PERSISTENT_WS",
       "@WORKSPACE", "@BASELINE", "@REFERENCE",
-      "@CONFIG_SOURCE_PATH", "@OPTIONS", "@ROOT",
-      "@AGREGATOR"
+      "@CONFIG_SOURCE_PATH", "@CONFIG", "@OPTIONS", 
+      "@ROOT", "@AGREGATOR"
     ]
   end
 
@@ -39,6 +39,18 @@ class VarManager
         str +=  "Input Variable #{var} defined: #{@vars[var]}\n"
       end
     end
+
+    if Flags.instance.get(:verbose)
+      Helper.set_internal_vars("<task>")
+      internal_vars.each do |var|
+        if @vars[var]
+          str += "Internal Variable #{var} defined: #{@vars[var]}\n"
+        else
+          str += "Internal Variable #{var} not yet defined.\n"
+        end
+      end
+    end
+
     return str
   end
 

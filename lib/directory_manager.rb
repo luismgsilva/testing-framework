@@ -21,8 +21,11 @@ module DirManager
   def self.get_framework_path
     "#{pwd}/#{FRAMEWORK}"
   end
-  def self.get_build_path
-    "#{pwd}/workspace"
+  def self.get_git_path
+    "#{pwd}/#{FRAMEWORK}/.git"
+  end
+  def self.get_build_path(task = "")
+    "#{pwd}/workspace/#{task}"
   end
   def self.get_sources_path
     "#{pwd}/sources"
@@ -33,8 +36,8 @@ module DirManager
   def self.get_lock_file
     "#{Dir.getwd}/.lock"
   end
-  def self.get_persistent_ws_path
-    "#{get_framework_path}/tasks"
+  def self.get_persistent_ws_path(task = "")
+    "#{get_framework_path}/persistent_ws/#{task}"
   end
   def self.get_logs_path
     "#{get_framework_path}/logs"
@@ -55,23 +58,16 @@ module DirManager
     create_dir(File.dirname(file))
   end
   def self.create_dir(dir)
-    system("mkdir -p #{dir}") if !File.directory? dir
+    Helper.execute("mkdir -p #{dir}") unless File.directory? dir
   end
   def self.copy_folder(dir_from, dir_to)
-    system("cp -r #{dir_from} #{dir_to}")
+    Helper.execute("cp -r #{dir_from} #{dir_to}")
   end
   def self.copy_file(file_from, file_to)
-    puts "aqui"
-    system("cp #{file_from} #{file_to}")
-  end
-  def self.delete_build_dir(repo_name)
-    path = "#{get_build_path}/#{repo_name}"
-    system "rm -rf #{path}" if File.directory? path
+    Helper.execute("cp #{file_from} #{file_to}")
   end
   def self.clean_tasks_folder(task)
-    system "echo 'Clearing #{task}..' ;
-            rm -rf #{get_build_path}/#{task} ;
-            rm -rf #{get_logs_path}/*"
+    Helper.execute("rm -rf #{get_build_path}/#{task} #{get_logs_path}/*")
   end
 
   def self.get_worktree_dir()
@@ -85,14 +81,7 @@ module DirManager
     create_dir(dir)
     return dir
   end
-  # why?
-  def self.create_directories(name)
-    paths = [
-      "#{Dir.getwd}/build/#{name}",
-      "#{Dir.getwd}/#{FRAMEWORK}/logs/"
-    ]
-    paths.each { |path| create_dir(path) }
-  end
+  
   def self.directory_exists(dir)
     File.directory? (dir)
   end

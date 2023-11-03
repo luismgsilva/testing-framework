@@ -35,6 +35,12 @@ module OptionParser
       @default_action.call() if (@default_action)
     end
 
+    # def is_debug_info(args)
+    #   if args.include?("--enable-debug-info")
+    #     Flags.instance.set(:debug_info)
+    #   end
+    # end
+
     def parse(args)
       if args.length < 1
         print_helper()
@@ -43,7 +49,9 @@ module OptionParser
 
       rule = args.shift
       rule = "#{rule} #{args.shift}" if rule =~ /sources/
-      options = {}
+      # is_debug_info(args) # WIP
+
+      options = { :flags => {} }
       if rule && @conditions[rule]
         @conditions[rule][:options].each do |o|
           short = o[:short] || "--#{o[:name]}"
@@ -51,12 +59,28 @@ module OptionParser
             if args[0] =~ (/^([^}]+)=([^}]+)$/)
               options[o[:name].to_sym] = [$1, $2]
             elsif o[:mandatory]
-              #error("bsf: missing argument #{o[:name]}", @conditions[rule])
               raise Ex::MissingArgumentException.new(o[:name])
             end
+
+          elsif o[:type] == :param
+            if args.include?(o[:short]) || args.include?("--#{o[:name]}")
+              i = args.index(o[:short]) || args.index("--#{o[:name]}")
+              # options[o[:name].to_sym] = args[i + 1]
+
+              flag_name = o[:name].to_sym
+              Flags.instance.set(flag_name, args[i + 1])
+
+              args.delete_at(i+1)
+              args.delete_at(i)
+            end
+
           elsif o[:type] == :option
             if args.include?(o[:short]) || args.include?("--#{o[:name]}")
-              options[o[:name].to_sym] = true
+              # options[:flags][o[:name].to_sym] = true
+
+              flag_name = o[:name].to_sym
+              Flags.instance.set(flag_name)
+
             end
             args.delete_if { |op| op == o[:short] || op ==  "--#{o[:name]}"}
           elsif o[:multiple]
@@ -66,10 +90,7 @@ module OptionParser
               value << args.shift
             end
             if value.empty? && o[:mandatory]
-              #error("bsf: missing argument #{o[:name]}", @conditions[rule])
               raise Ex::MissingArgumentException.new(o[:name])
-              #raise Ex::MissingArgumentException.new("#{o[:name]}\n
-                                                     #{@conditions[rule][:help]}")
             end
             if value.any?
               options[o[:name].to_sym] = value
@@ -77,26 +98,16 @@ module OptionParser
           elsif !o[:multiple]
             value = args.shift if !args.empty? && !args.first.start_with?("-")
             if value.nil? && o[:mandatory]
-              #error("bsf: missing argument #{o[:name]}", @conditions[rule])
               raise Ex::MissingArgumentException.new(o[:name])
-              #raise Ex::MissingArgumentException.new("#{o[:name]}\n
-                                                     #{@conditions[rule][:help]}")
             end
             options[o[:name].to_sym] = value
           end
         end if @conditions[rule][:options]
       else
-        #error("bsf: invalid command #{rule}", @conditions)
         raise Ex::InvalidCommandException.new(rule)
-        #raise Ex::MissingArgumentException.new("#{o[:name]}\n
-                                               #{@conditions[rule][:help]}")
       end
-
-      #puts "DEBUG: Rule: #{rule}"
-      #puts "DEBUG: Options: #{options}"
 
       @conditions[rule][:action].call(options)
     end
   end
 end
-

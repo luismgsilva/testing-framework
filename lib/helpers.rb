@@ -16,12 +16,11 @@ class Helper
     VarManager.instance.set_internal("@SOURCE", DirManager.get_sources_path)
     VarManager.instance.set_internal("@ROOT", DirManager.pwd)
     VarManager.instance.set_internal("@BUILDNAME", task)
-    VarManager.instance.set_internal("@PERSISTENT_WS",
-      "#{DirManager.get_persistent_ws_path}/#{task}")
-    VarManager.instance.set_internal("@WORKSPACE",
-      "#{DirManager.get_build_path}/#{task}")
-    VarManager.instance.set_internal("@CONFIG_SOURCE_PATH",
-      DirManager.get_config_path)
+    VarManager.instance.set_internal("@PERSISTENT_WS", DirManager.get_persistent_ws_path(task))
+    VarManager.instance.set_internal("@WORKSPACE", DirManager.get_build_path(task))
+    VarManager.instance.set_internal("@CONFIG", DirManager.get_config_path)
+    # This is deprecated, it will be removed.
+    VarManager.instance.set_internal("@CONFIG_SOURCE_PATH", DirManager.get_config_path)
   end
 
   def self.input_user(message, option = nil)
@@ -31,7 +30,6 @@ class Helper
     end
     loop do
       input = $stdin.gets.chomp.downcase
-
       case input
       when 'y', 'yes'
         break
@@ -42,10 +40,31 @@ class Helper
   end
 
   def self.tasks_list()
+    is_verbose = Flags.instance.get(:verbose)
+
     to_print = ""
-    Config.instance.tasks.keys.each do |task|
+    tasks = Config.instance.tasks.keys
+    tasks.each do |task|
+      validate_task_exists(task)
       description = Config.instance.task_description(task)
 	    to_print += "#{task}:\n    Description: #{description}\n"
+      if is_verbose
+        set_internal_vars(task)
+
+        pre_condition = Config.instance.pre_condition(task)
+        if pre_condition
+          to_print += "\n    Pre Conditions:\n"
+          to_print += "       " + (pre_condition.is_a?(String) ? pre_condition : pre_condition.join("\n       "))
+        end
+
+        execute = Config.instance.execute(task)
+        if execute
+          to_print += "\n    Execute:\n"
+          Array(execute).each_with_index do |step, index|
+            to_print += "       #{index + 1}. #{step}\n"
+          end
+        end
+      end
     end
     return to_print
   end
@@ -126,13 +145,12 @@ class Helper
     end
   end
 
-  @debug = false
   def self.execute(cmd)
-    puts "DEBUG - BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if Flags.instance.get(:debug_info)
     return system(cmd)
   end
   def self.return_execute(cmd)
-    puts "DEBUG - BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if Flags.instance.get(:debug_info)
     return `#{cmd}`
   end
 end

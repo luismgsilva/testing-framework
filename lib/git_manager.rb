@@ -5,34 +5,6 @@ class GitManager
 
   attr_reader :name
 
-  def set_git(git_info)
-  end
-
-  def valid_repo(repo)
-    return Helper.execute("git ls-remote #{repo} > /dev/null 2>&1")
-  end
-
-  # def self.executing(to_execute)
-  #   puts to_execute
-  #   return system to_execute
-  # end
-
-
-  def self.publish(commit_msg)
-    framework_path = DirManager.get_framework_path
-    git_path = "#{framework_path}/.git"
-
-    create_env() if !DirManager.directory_exists(git_path)
-
-    to_execute = "git -C #{framework_path} add . ;
-                  git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
-
-    Status.reset_status if Helper.execute(to_execute)
-    cmd = "rm -rf #{DirManager.get_build_path}/*"
-    Helper.execute(cmd)
-  end
-
-
   def self.nested_hash_search(obj, key, value)
     if obj.respond_to?(:key?) && obj.key?(key) && obj[key] =~ /#{value}/
       return true
@@ -66,10 +38,6 @@ class GitManager
    end
   end
 
-  def self.create_env()
-    raise Ex::MustInitializeGitRepoException
-  end
-
   def self.internal_git(command)
 
     command = command.join(" ") if command.class == Array
@@ -91,12 +59,10 @@ class GitManager
 
   def self.create_worktree(hash, dir)
     internal_git("worktree add -f #{dir} #{hash} > /dev/null 2>&1")
-    #internal_git("worktree add -f #{dir} #{hash}")
   end
 
   def self.remove_worktree(dir)
     internal_git("worktree remove #{dir} > /dev/null 2>&1")
-    #internal_git("worktree remove -f #{dir}")
   end
 
   def self.get_clone(opts)
@@ -105,13 +71,8 @@ class GitManager
 
     to_execute = "git clone #{opts[:repo]} #{path_to_clone}"
     to_execute += " --branch #{opts[:branch]}" if opts[:branch]
-    to_execute += " --depth 1 --single-branch" if opts[:single]
+    to_execute += " --depth 1 --single-branch" if opts[:shallow]
 
     Helper.execute(to_execute)
   end
-
-  def if_already_exists(path_to_clone)
-    return File.directory? path_to_clone
-  end
-
 end

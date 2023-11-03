@@ -9,7 +9,8 @@ class Build
     return data.slice(*selected_tasks)
   end
 
-  def self.pre_condition(data, skip)
+  # def self.pre_condition(data, skip)
+    def self.pre_condition(data)
     failed_tasks = {}
     data.each_pair do |task, command|
       next if command[:pre_condition].nil?
@@ -36,7 +37,7 @@ class Build
       end
       raise Ex::API_TEMP.new(msg) if @api
       puts msg
-      return if skip
+      return if Flags.instance.get(:confirm)
       exit -1 if !data
       Helper.input_user("Do you want to contiue? [y/n]")
     end
@@ -52,21 +53,29 @@ class Build
     end
   end
 
-  def self.build(selected_tasks, skip, parallel, is_verbose, api = false)
+  # def self.build(selected_tasks, skip, parallel, is_verbose, ignore, api = false)
+  def self.build(tasks, api = false)
+
     data = Config.instance.tasks
-    data = filter_task(data, selected_tasks) if selected_tasks
+    data = filter_task(data, tasks) if tasks
     DirManager.create_dir(DirManager.get_logs_path)
 
     validate_variables(data)
-    pre_condition(data, skip)
-    parallel_verifier(data, parallel, is_verbose)
+    # pre_condition(data, skip)
+    pre_condition(data)
+    # parallel_verifier(data, parallel, is_verbose, skip_step)
+    parallel_verifier(data)
   end
 
-  def self.execute(task, command, is_verbose)
+  # def self.execute(task, command, is_verbose, skip_step)
+  def self.execute(task, command)
+    is_verbose = Flags.instance.get(:verbose)
+    is_ignore  = Flags.instance.get(:ignore)
+
     mutex = Mutex.new
     mutex.lock
     Helper.set_internal_vars(task)
-    to_execute = VarManager.instance.prepare_data(command[:execute])
+    steps = VarManager.instance.prepare_data(command[:execute])
     workspace_dir = VarManager.instance.get("@WORKSPACE")
     DirManager.create_dir(workspace_dir)
     DirManager.create_dir(VarManager.instance.get("@PERSISTENT_WS"))
@@ -74,19 +83,15 @@ class Build
 
     out = File.open(DirManager.get_log_file(task), "w")
 
-    puts "Executing #{task}.."
     status = nil
-    Array(to_execute).each do |execute|
-      puts execute if is_verbose
-      tmp = true
-      if tmp
-      status = system("echo 'BSF Executing: #{execute}' ;
+    puts "Executing #{task}.."
+    Array(steps).each_with_index do |step, i|
+      next if is_ignore_step(i)
+
+      puts step if is_verbose
+      status = system("echo 'BSF Executing: #{step}' ;
                        cd #{workspace_dir} ;
-                       #{execute}", out: out, err: out)
-      else
-        status = system("echo 'BSF Executing: #{execute}' >> #{DirManager.get_log_file(task)} ;
-                        cd #{workspace_dir} ; #{execute} 2>&1 | tee -a #{DirManager.get_log_file(task)}")
-      end
+                       #{step}", out: out, err: out)
       break if !status
     end
 
@@ -96,17 +101,45 @@ class Build
   end
 
 
-  def self.parallel_verifier(data, parallel, is_verbose)
-    task_list = []
-    data.each do |task, command|
-      if parallel
-        todo = Thread.new(task) { |this| execute(task, command, is_verbose) }
-        task_list << todo
-      else
-        execute(task, command, is_verbose)
+  def self.is_ignore_step(step_index)
+    is_ignore = Flags.instance.get(:ignore)
+    return false unless is_ignore
+  
+    steps = is_ignore.split(",")
+    step_index = (step_index.to_i + 1)
+  
+    steps.each do |step|
+      if step.include?("-")
+        start, stop = step.split("-").map(&:to_i)
+        return true if (start..stop).cover?(step_index)
+      elsif step.to_i == step_index
+        return true
       end
     end
-    task_list.each { |task| task.join } if parallel
+  
+    return false
+  end
+  
+
+
+  # def self.parallel_verifier(data, parallel, is_verbose, skip_step)
+  def self.parallel_verifier(data)
+    is_parallel = Flags.instance.get(:parallel)
+
+    task_list = []
+    data.each do |task, command|
+      if is_parallel
+        # todo = Thread.new(task) { |this| execute(task, command, is_verbose, skip_step) }
+        todo = Thread.new(task) { |this| execute(task, command) }
+        task_list << todo
+      else
+        # execute(task, command, is_verbose, skip_step)
+        execute(task, command)
+      end
+    end
+    if is_parallel
+      task_list.each { |task| task.join } 
+    end
   end
 
 end

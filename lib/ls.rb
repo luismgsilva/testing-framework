@@ -13,6 +13,7 @@ module Ls
     end
 
     tmp_dir = DirManager.get_worktree_dir()
+    GitManager.remove_worktree(tmp_dir)
     GitManager.create_worktree(commit_id, tmp_dir)
 
     status = Status.get_status("#{tmp_dir}/status.json")

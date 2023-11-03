@@ -9,6 +9,7 @@ module Report
     file = if commit_id
       validate_commit_id(commit_id)
       dir = DirManager.get_compare_dir(commit_id)
+      GitManager.remove_worktree(dir)
       GitManager.create_worktree(commit_id, dir)
       { hash: commit_id, path: dir }.merge(get_commit_data(dir, commit_id))
     else

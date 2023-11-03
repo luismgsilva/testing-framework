@@ -13,7 +13,6 @@ class Main
     end
 
     begin
-
       path, args = Helper.find_change_directory_arg(args)
       lock_args = args.clone
       Helper.validate_path(path)
@@ -23,6 +22,10 @@ class Main
         unless File.directory? (DirManager.get_framework_path)
           raise Ex::NotBSFDirectoryException
         end
+      end
+
+      if args.include?("--enable-debug-info") # WIP
+        Flags.instance.set(:debug_info)
       end
 
       Lock.lock(lock_args)
@@ -45,7 +48,7 @@ class Main
     # sources get
     opt.condition_option("sources get",     { name: "shallow", short: "-s", type: :option } )
     opt.condition_option("sources get",     { name: "sources", multiple: true } )
-    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources], opts[:"shallow"]) }
+    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources]) }
     # sources delete
     opt.condition_option("sources delete",  { name: "task", mandatory: true } )
     opt.condition_action("sources delete")  { |opts| Source.delete_sources(opts[:task]) }
@@ -66,19 +69,22 @@ class Main
     opt.condition_option("init",            { name: "folderpath", mandatory: true } )
     opt.condition_action("init")            { |opts| Config.init_bsf(opts[:folderpath]) }
     # vars
+    opt.condition_option("vars",           { name: "verbose", short: "-v", type: :option } )
     opt.condition_action("vars")            { |opts| puts VarManager.instance.var_list() }
     # tasks
     opt.condition_help("tasks",             "Lists all the tasks and its description")
+    opt.condition_option("tasks",           { name: "verbose", short: "-v", type: :option } )
     opt.condition_action("tasks")           { |opts| puts Helper.tasks_list() }
     # set
     opt.condition_option("set",             { name: "option", type: :equal, mandatory: true } )
     opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:option][0], opts[:option][1]); VarManager.instance.save }
     # execute
+    opt.condition_option("execute",         { name: "ignore", short: "", type: :param } )
     opt.condition_option("execute",         { name: "verbose", short: "-v", type: :option } )
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
-    opt.condition_action("execute")         { |opts| Build.build(opts[:task], opts[:confirm], opts[:parallel], opts[:verbose]) }
+    opt.condition_action("execute")         { |opts| Build.build(opts[:task]) }
     # publish
     opt.condition_action("publish")         { |opts| Publish.publish() }
     # diff
@@ -109,14 +115,14 @@ class Main
     opt.condition_option("log",             { name: "follow", short: "-f", type: :option })
     opt.condition_option("log",             { name: "task", mandatory: true })
     opt.condition_option("log",             { name: "hash" })
-    opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash], opts[:follow]) }
+    opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash]) }
     # status
     opt.condition_option("status",          { name: "hash" })
     opt.condition_action("status")          { |opts| puts Status.get_task_status(opts[:hash]) }
     #clean
     opt.condition_option("clean",           { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean",           { name: "task", multiple: true } )
-    opt.condition_action("clean")           { |opts| Clean.clean(opts[:task], opts[:confirm]) }
+    opt.condition_action("clean")           { |opts| Clean.clean(opts[:task]) }
     # ls
     opt.condition_option("ls",              { name: "task", mandatory: true } )
     opt.condition_option("ls",              { name: "hash" } )

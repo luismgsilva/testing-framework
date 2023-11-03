@@ -92,6 +92,12 @@ class Config
   def task_description(task)
     tasks[task.to_sym][:description]
   end
+  def pre_condition(task)
+    tasks[task.to_sym][:pre_condition]
+  end
+  def execute(task)
+    tasks[task.to_sym][:execute]
+  end
   def publish_header(task)
     tasks[task.to_sym][:publish_header]
   end

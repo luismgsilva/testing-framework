@@ -69,6 +69,11 @@ module Ex
             super "bsf: Task not executed - #{task}"
         end
     end
+    class TaskNotExecutedException < StandardError
+        def initialize
+            super "bsf: Task not executed"
+        end
+    end
     class TargetNotSpecifiedException < StandardError
         def initialize
             super "bsf: Target not specified"
