@@ -37,7 +37,8 @@ module DirManager
     "#{Dir.getwd}/.lock"
   end
   def self.get_persistent_ws_path(task = "")
-    "#{get_framework_path}/persistent_ws/#{task}"
+    # "#{get_framework_path}/persistent_ws/#{task}"
+    "#{get_framework_path}/tasks/#{task}"
   end
   def self.get_logs_path
     "#{get_framework_path}/logs"

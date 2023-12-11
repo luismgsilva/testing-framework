@@ -69,7 +69,7 @@ module Compare
       files = hashs.each_with_object({}) do |hash, result|
         Helper.validate_commit_id(hash)
         dir = DirManager.get_compare_dir(hash)
-        GitManager.remove_worktree(tmp_dir)
+        GitManager.remove_worktree(dir)
         GitManager.create_worktree(hash, dir)
         result[hash] = dir
       end

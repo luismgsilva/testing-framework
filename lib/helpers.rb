@@ -39,11 +39,11 @@ class Helper
     end
   end
 
-  def self.tasks_list()
+  def self.tasks_list(tasks)
     is_verbose = Flags.instance.get(:verbose)
 
     to_print = ""
-    tasks = Config.instance.tasks.keys
+    tasks = tasks || Config.instance.tasks.keys
     tasks.each do |task|
       validate_task_exists(task)
       description = Config.instance.task_description(task)

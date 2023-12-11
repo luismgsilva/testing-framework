@@ -74,7 +74,8 @@ class Main
     # tasks
     opt.condition_help("tasks",             "Lists all the tasks and its description")
     opt.condition_option("tasks",           { name: "verbose", short: "-v", type: :option } )
-    opt.condition_action("tasks")           { |opts| puts Helper.tasks_list() }
+    opt.condition_option("tasks",         { name: "task", mandatory: false, multiple: true } )
+    opt.condition_action("tasks")           { |opts| puts Helper.tasks_list(opts[:task]) }
     # set
     opt.condition_option("set",             { name: "option", type: :equal, mandatory: true } )
     opt.condition_action("set")             { |opts| VarManager.instance.set(opts[:option][0], opts[:option][1]); VarManager.instance.save }
