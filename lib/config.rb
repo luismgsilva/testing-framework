@@ -64,7 +64,7 @@ class Config
   def self.validate_config(file_path)
     begin
       config = JSON.parse(File.read(file_path), symbolize_names: true)
-      unless config[:sources] && config[:tasks]
+      unless config[:tasks]
         return false
       end
       return config
