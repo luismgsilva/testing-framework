@@ -20,13 +20,13 @@ module Ex
         end
     end
     class InvalidConfigFileException < StandardError
-        def initialize
-            super "bsf: Invalid configuration file"
+        def initialize(file_name, str)
+            super "bsf: Invalid configuration file - #{file_name} #{str}"
         end
     end
-    class InvalidFragConfigFileException < StandardError
-        def initialize(frag)
-            super "bsf: Invalid fragment configuration file - #{frag}"
+    class InvalidJSONFormatException < StandardError
+        def initialize(file_name)
+            super "bsf: Invalid JSON format - #{file_name}"
         end
     end
     class PathMustContainConfigFileException < StandardError
