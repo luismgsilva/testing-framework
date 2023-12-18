@@ -43,34 +43,16 @@ class Config
 
 
   def self.load_config(config_file = "#{DirManager.get_config_path}/config.json")
-    config = validate_config(config_file)
-    unless config
-        raise Ex::InvalidConfigFileException
-    end
+    config = Validator.validate_configuration_file(config_file)
 
     Dir.glob(File.join(DirManager.get_config_path, "*.frag")) do | frag_file |
-      frag_config = validate_config(frag_file)
-      unless frag_config
-        raise Ex::InvalidFragConfigFileException.new(File.basename(frag_file))
-      end
+      frag_config = Validator.validate_configuration_file(frag_file)
+
       config[:sources].merge!(frag_config[:sources])
       config[:tasks].merge!(frag_config[:tasks])
     end
 
     return config
-  end
-
-
-  def self.validate_config(file_path)
-    begin
-      config = JSON.parse(File.read(file_path), symbolize_names: true)
-      unless config[:tasks]
-        return false
-      end
-      return config
-    rescue => e
-      return false
-    end
   end
 
   def self.save_config(dir_to)
