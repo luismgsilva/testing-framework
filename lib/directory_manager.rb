@@ -16,7 +16,13 @@ module DirManager
     end
   end
   def self.get_config_path
-    "#{pwd}/#{FRAMEWORK}/.config"
+    path = "#{get_framework_path}/config"
+    dep_path = "#{get_framework_path}/.config"
+    if Dir.exists? (dep_path)
+      return dep_path
+    else
+      return path
+    end
   end
   def self.get_framework_path
     "#{pwd}/#{FRAMEWORK}"
@@ -34,7 +40,13 @@ module DirManager
     "#{Dir.getwd}/.lock"
   end
   def self.get_persistent_ws_path
-    "#{get_framework_path}/tasks"
+    path = "#{get_framework_path}/persistent_ws"
+    dep_path = "#{get_framework_path}/tasks"
+    if Dir.exists? (dep_path)
+      return dep_path
+    else
+      return path
+    end
   end
   def self.get_logs_path
     "#{get_framework_path}/logs"
