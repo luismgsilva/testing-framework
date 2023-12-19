@@ -24,12 +24,29 @@ class GitManager
 
     create_env() if !DirManager.directory_exists(git_path)
 
-    to_execute = "git -C #{framework_path} add . ;
-                  git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
+    config_path = DirManager.get_config_path()
+    status_file = DirManager.get_status_file()
+    persistent_ws_path = DirManager.get_persistent_ws_path()
+    log_path = DirManager.get_logs_path()
 
-    Status.reset_status if Helper.execute(to_execute)
-    cmd = "rm -rf #{DirManager.get_build_path}/*"
-    Helper.execute(cmd)
+    store_in = " #{config_path} #{status_file} "
+    delete_in = ""
+    status = Status.get_status()
+    Config.instance.tasks.keys().each do |task|
+      if status[task.to_sym] == 0
+        store_in  += " #{persistent_ws_path}/#{task} #{log_path}/#{task}.log "
+        delete_in += " #{DirManager.get_build_path}/#{task} "
+      end
+    end
+
+    cmd = "git -C #{framework_path} add #{store_in} ;
+           git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
+
+    if Helper.execute(cmd)
+      Status.reset_status
+      cmd = "rm -rf #{delete_in}"
+      Helper.execute(cmd)
+    end
   end
 
 
