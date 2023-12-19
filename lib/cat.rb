@@ -20,7 +20,8 @@ module Cat
         raise Ex::TaskNotExecutedException
     end
 
-    cmd = "cat #{tmp_dir}/tasks/#{task}/#{file}"
+    persistent_ws = DirManager.get_persistent_ws_path(tmp_dir)
+    cmd = "cat #{persistent_ws}/#{task}/#{file}"
     to_print = Helper.return_execute(cmd)
     GitManager.remove_worktree(tmp_dir)
     to_print

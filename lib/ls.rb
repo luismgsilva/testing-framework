@@ -19,7 +19,9 @@ module Ls
     if status[task.to_sym] != 0
       raise Ex::TaskNotExecutedException
     end
-    cmd = "ls #{tmp_dir}/tasks/#{task}"
+
+    persistent_ws = DirManager.get_persistent_ws_path(tmp_dir)
+    cmd = "ls #{persistent_ws}/#{task}"
     to_print = Helper.return_execute(cmd)
     GitManager.remove_worktree(tmp_dir)
     to_print

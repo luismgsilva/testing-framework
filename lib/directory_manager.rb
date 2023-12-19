@@ -15,9 +15,9 @@ module DirManager
       return File.expand_path(path)
     end
   end
-  def self.get_config_path
-    path = "#{get_framework_path}/config"
-    dep_path = "#{get_framework_path}/.config"
+  def self.get_config_path(root_path = get_framework_path())
+    path = "#{root_path}/config"
+    dep_path = "#{root_path}/.config"
     if Dir.exists? (dep_path)
       return dep_path
     else
@@ -39,9 +39,9 @@ module DirManager
   def self.get_lock_file
     "#{Dir.getwd}/.lock"
   end
-  def self.get_persistent_ws_path
-    path = "#{get_framework_path}/persistent_ws"
-    dep_path = "#{get_framework_path}/tasks"
+  def self.get_persistent_ws_path(root_path = get_framework_path())
+    path = "#{root_path}/persistent_ws"
+    dep_path = "#{root_path}/tasks"
     if Dir.exists? (dep_path)
       return dep_path
     else

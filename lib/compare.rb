@@ -12,7 +12,8 @@ module Compare
       files.each_pair do |hash, dir|
         status = Status.get_status("#{dir}/status.json")
         if status[target.to_sym] == 0
-          options += " -h #{dir}/tasks/#{target}/:#{hash} "
+          persistent_ws = DirManager.get_persistent_ws_path(dir)
+          options += " -h #{persistent_ws}/#{target}/:#{hash} "
         else
           options += " -h :#{hash} "
         end

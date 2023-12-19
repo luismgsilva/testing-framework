@@ -22,7 +22,8 @@ module Report
     options = normalize_options(options)
     validate_task_execution(file, target)
 
-    options += " -h #{file[:path]}/tasks/#{target}:#{file[:hash]}"
+    persistent_ws = DirManager.get_persistent_ws_path(file[:path])
+    options += " -h #{persistent_ws}/#{target}:#{file[:hash]}"
     VarManager.instance.set_internal("@OPTIONS", options)
     Helper.set_internal_vars(target)
     commands = Config.instance.report(target)
