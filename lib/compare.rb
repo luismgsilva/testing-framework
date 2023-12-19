@@ -13,9 +13,9 @@ module Compare
         status = Status.get_status("#{dir}/status.json")
         if status[target.to_sym] == 0
           persistent_ws = DirManager.get_persistent_ws_path(dir)
-          options += " -h #{persistent_ws}/#{target}/:#{hash} "
+          options += " -h #{persistent_ws}/#{target}/:#{hash}"
         else
-          options += " -h :#{hash} "
+          options += " -h :#{hash}"
         end
       end
 
@@ -102,7 +102,7 @@ module Compare
 
       keys = files.keys
       keys.push("LOCAL") if keys.length == 1
-      keys.each { |h| options += " -h :#{h} " }
+      keys.each { |h| options += " -h :#{h}" }
 
       tmpfile = Helper.return_execute("mktemp").chomp
       File.write(tmpfile, JSON.pretty_generate(agregator))

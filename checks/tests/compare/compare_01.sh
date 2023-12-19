@@ -5,7 +5,7 @@
 
 # Define the expected output
 expected_output=$(cat <<EOF
--f test -h $(pwd)/ws/workspace/compare/HEAD^/persistent_ws/test01/:HEAD^  -h $(pwd)/ws/workspace/compare/HEAD/persistent_ws/test01/:HEAD
+-f test -h $(pwd)/ws/workspace/compare/HEAD^/persistent_ws/test01/:HEAD^ -h $(pwd)/ws/workspace/compare/HEAD/persistent_ws/test01/:HEAD
 EOF
 )
 
