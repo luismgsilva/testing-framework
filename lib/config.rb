@@ -45,11 +45,11 @@ class Config
   def self.load_config(config_file = "#{DirManager.get_config_path}/config.json")
     config = Validator.validate_configuration_file(config_file)
 
-    Dir.glob(File.join(DirManager.get_config_path, "*.frag")) do | frag_file |
+    Dir.glob(File.join(File.dirname(config_file), "*.frag")) do | frag_file |
       frag_config = Validator.validate_configuration_file(frag_file)
 
-      config[:sources].merge!(frag_config[:sources])
-      config[:tasks].merge!(frag_config[:tasks])
+      config[:sources]&.merge!(frag_config[:sources] || {})
+      config[:tasks]&.merge!(frag_config[:tasks] || {})
     end
 
     return config
