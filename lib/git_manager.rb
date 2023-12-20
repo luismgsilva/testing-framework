@@ -40,7 +40,7 @@ class GitManager
     end
 
     cmd = "git -C #{framework_path} add #{store_in} ;
-           git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
+           git -C #{framework_path} commit --allow-empty -m '#{commit_msg}' > /dev/null 2>&1"
 
     if Helper.execute(cmd)
       Status.reset_status
