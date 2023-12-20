@@ -81,9 +81,7 @@ module DirManager
     system "rm -rf #{path}" if File.directory? path
   end
   def self.clean_tasks_folder(task)
-    system "echo 'Clearing #{task}..' ;
-            rm -rf #{get_build_path}/#{task} ;
-            rm -rf #{get_logs_path}/*"
+    Helper.execute("rm -rf #{get_build_path}/#{task} #{get_logs_path}/*")
   end
 
   def self.get_worktree_dir()

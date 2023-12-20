@@ -126,13 +126,12 @@ class Helper
     end
   end
 
-  @debug = false
   def self.execute(cmd)
-    puts "DEBUG - BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if Flags.instance.get(:debug_info)
     return system(cmd)
   end
   def self.return_execute(cmd)
-    puts "DEBUG - BSF Executing: #{cmd}" if @debug
+    puts "DEBUG - BSF Executing: #{cmd}" if Flags.instance.get(:debug_info)
     return `#{cmd}`
   end
 end

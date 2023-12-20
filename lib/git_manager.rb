@@ -122,7 +122,7 @@ class GitManager
 
     to_execute = "git clone #{opts[:repo]} #{path_to_clone}"
     to_execute += " --branch #{opts[:branch]}" if opts[:branch]
-    to_execute += " --depth 1 --single-branch" if opts[:single]
+    to_execute += " --depth 1 --single-branch" if opts[:shallow]
 
     Helper.execute(to_execute)
   end
