@@ -5,51 +5,6 @@ class GitManager
 
   attr_reader :name
 
-  def set_git(git_info)
-  end
-
-  def valid_repo(repo)
-    return Helper.execute("git ls-remote #{repo} > /dev/null 2>&1")
-  end
-
-  # def self.executing(to_execute)
-  #   puts to_execute
-  #   return system to_execute
-  # end
-
-
-  def self.publish(commit_msg)
-    framework_path = DirManager.get_framework_path
-    git_path = "#{framework_path}/.git"
-
-    create_env() if !DirManager.directory_exists(git_path)
-
-    config_path = DirManager.get_config_path()
-    status_file = DirManager.get_status_file()
-    persistent_ws_path = DirManager.get_persistent_ws_path()
-    log_path = DirManager.get_logs_path()
-
-    store_in = " #{config_path} #{status_file} "
-    delete_in = ""
-    status = Status.get_status()
-    Config.instance.tasks.keys().each do |task|
-      if status[task.to_sym] == 0
-        store_in  += " #{persistent_ws_path}/#{task} #{log_path}/#{task}.log "
-        delete_in += " #{DirManager.get_build_path}/#{task} "
-      end
-    end
-
-    cmd = "git -C #{framework_path} add #{store_in} ;
-           git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
-
-    if Helper.execute(cmd)
-      Status.reset_status
-      cmd = "rm -rf #{delete_in}"
-      Helper.execute(cmd)
-    end
-  end
-
-
   def self.nested_hash_search(obj, key, value)
     if obj.respond_to?(:key?) && obj.key?(key) && obj[key] =~ /#{value}/
       return true
@@ -81,10 +36,6 @@ class GitManager
       return Helper.return_execute(cmd)
     else return "No Matches"
    end
-  end
-
-  def self.create_env()
-    raise Ex::MustInitializeGitRepoException
   end
 
   def self.internal_git(command)
@@ -126,9 +77,4 @@ class GitManager
 
     Helper.execute(to_execute)
   end
-
-  def if_already_exists(path_to_clone)
-    return File.directory? path_to_clone
-  end
-
 end

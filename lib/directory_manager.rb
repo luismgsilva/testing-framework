@@ -27,6 +27,9 @@ module DirManager
   def self.get_framework_path
     "#{pwd}/#{FRAMEWORK}"
   end
+  def self.get_git_path
+    "#{pwd}/#{FRAMEWORK}/.git"
+  end
   def self.get_build_path
     "#{pwd}/workspace"
   end

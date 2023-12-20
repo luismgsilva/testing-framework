@@ -1,5 +1,11 @@
 module Publish
   def self.publish
+
+    git_path = DirManager.get_git_path
+    unless DirManager.directory_exists(git_path)
+      raise Ex::MustInitializeGitRepoException
+    end
+
     persistent_ws = DirManager.get_persistent_ws_path
     commit_msg_hash = {}
     status = JSON.parse(File.read(DirManager.get_status_file))
@@ -31,6 +37,37 @@ module Publish
       commit_msg_hash[task] = place_holder
     end
 
-    GitManager.publish(JSON.pretty_generate(commit_msg_hash))
+    framework_path = DirManager.get_framework_path
+
+    config_path = DirManager.get_config_path()
+    status_file = DirManager.get_status_file()
+    persistent_ws_path = DirManager.get_persistent_ws_path()
+    log_path = DirManager.get_logs_path()
+
+    store_in = " #{config_path} #{status_file} "
+    delete_in = ""
+    status = Status.get_status()
+    Config.instance.tasks.keys().each do |task|
+      if status[task.to_sym] == 0
+        store_in  += " #{persistent_ws_path}/#{task} #{log_path}/#{task}.log "
+        delete_in += " #{DirManager.get_build_path}/#{task} "
+      end
+    end
+
+    commit_msg = JSON.pretty_generate(commit_msg_hash)
+    cmd = "git -C #{framework_path} add #{store_in} ;
+           git -C #{framework_path} commit -m '#{commit_msg}' > /dev/null 2>&1"
+
+
+    if Helper.execute(cmd)
+      Status.reset_status
+
+      unless Flags.instance.get(:ignore)
+        # Luis, is it suppose to clean all ws independent if it failed?
+        Flags.instance.set(:publish)
+        Flags.instance.set(:confirm)
+        Clean.clean()
+      end
+    end
   end
 end
