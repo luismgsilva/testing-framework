@@ -25,6 +25,10 @@ class Main
         end
       end
 
+      if args.include?("--enable-debug-info") # WIP
+        Flags.instance.set(:debug_info)
+      end
+
       Lock.lock(lock_args)
 
       opt = OptionParser::OptionParser.new
@@ -45,7 +49,7 @@ class Main
     # sources get
     opt.condition_option("sources get",     { name: "shallow", short: "-s", type: :option } )
     opt.condition_option("sources get",     { name: "sources", multiple: true } )
-    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources], opts[:"shallow"]) }
+    opt.condition_action("sources get")     { |opts| Source.get_sources(opts[:sources]) }
     # sources delete
     opt.condition_option("sources delete",  { name: "task", mandatory: true } )
     opt.condition_action("sources delete")  { |opts| Source.delete_sources(opts[:task]) }
@@ -78,7 +82,7 @@ class Main
     opt.condition_option("execute",         { name: "confirm", short: "-y", type: :option } )
     opt.condition_option("execute",         { name: "parallel", short: "-p", type: :option } )
     opt.condition_option("execute",         { name: "task", mandatory: false, multiple: true } )
-    opt.condition_action("execute")         { |opts| Build.build(opts[:task], opts[:confirm], opts[:parallel], opts[:verbose]) }
+    opt.condition_action("execute")         { |opts| Build.build(opts[:task]) }
     # publish
     opt.condition_action("publish")         { |opts| Publish.publish() }
     # diff
@@ -109,14 +113,14 @@ class Main
     opt.condition_option("log",             { name: "follow", short: "-f", type: :option })
     opt.condition_option("log",             { name: "task", mandatory: true })
     opt.condition_option("log",             { name: "hash" })
-    opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash], opts[:follow]) }
+    opt.condition_action("log")             { |opts| puts Log.log(opts[:task], opts[:hash]) }
     # status
     opt.condition_option("status",          { name: "hash" })
     opt.condition_action("status")          { |opts| puts Status.get_task_status(opts[:hash]) }
     #clean
     opt.condition_option("clean",           { name: "confirm", short: "-y", type: :option })
     opt.condition_option("clean",           { name: "task", multiple: true } )
-    opt.condition_action("clean")           { |opts| Clean.clean(opts[:task], opts[:confirm]) }
+    opt.condition_action("clean")           { |opts| Clean.clean(opts[:task]) }
     # ls
     opt.condition_option("ls",              { name: "task", mandatory: true } )
     opt.condition_option("ls",              { name: "hash" } )

@@ -23,7 +23,7 @@ class Source
 
     config_sources.each_pair do |name, source|
       source[:name] = name
-      source[:single] = true if single
+      source[:shallow] = Flags.instance.get(:shallow)
       GitManager.get_clone(source)
     end
   end
