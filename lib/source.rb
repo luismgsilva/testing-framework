@@ -22,9 +22,17 @@ class Source
     raise Ex::NothingToCloneException if config_sources.empty?
 
     config_sources.each_pair do |name, source|
-      source[:name] = name
-      source[:shallow] = Flags.instance.get(:shallow)
-      GitManager.get_clone(source)
+      repo   = source[:repo]
+      branch = source[:branch]
+
+      path_to_clone = DirManager.get_source_path(name)
+      return if DirManager.directory_exists(path_to_clone)
+
+      to_execute = "git clone #{repo} #{path_to_clone}"
+      to_execute += " --branch #{branch}" if branch
+      to_execute += " --depth 1 --single-branch" if Flags.instance.get(:shallow)
+
+      Helper.execute(to_execute)
     end
   end
 
