@@ -10,6 +10,7 @@ module Status
     if commit_id
       Helper.validate_commit_id(commit_id)
       worktree_dir = DirManager.get_worktree_dir()
+      GitManager.remove_worktree(worktree_dir)
       GitManager.create_worktree(commit_id, worktree_dir)
       status = get_status("#{worktree_dir}/status.json")
       GitManager.remove_worktree(worktree_dir)

@@ -1,6 +1,6 @@
 module Cat
   def self.cat(task, commit_id, file)
-    Helper.validate_commit_id(commit_id)
+    Helper.validate_commit_id(commit_id) if commit_id
     Helper.validate_task_exists(task)
 
     unless commit_id
@@ -13,6 +13,7 @@ module Cat
     end
 
     tmp_dir = DirManager.get_worktree_dir()
+    GitManager.remove_worktree(tmp_dir)
     GitManager.create_worktree(commit_id, tmp_dir)
 
     status = Status.get_status("#{tmp_dir}/status.json")

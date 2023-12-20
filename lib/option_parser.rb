@@ -56,7 +56,8 @@ module OptionParser
             end
           elsif o[:type] == :option
             if args.include?(o[:short]) || args.include?("--#{o[:name]}")
-              options[o[:name].to_sym] = true
+              flag_name = o[:name].to_sym
+              Flags.instance.set(flag_name)
             end
             args.delete_if { |op| op == o[:short] || op ==  "--#{o[:name]}"}
           elsif o[:multiple]

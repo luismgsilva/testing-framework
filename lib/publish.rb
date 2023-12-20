@@ -5,9 +5,15 @@ module Publish
     status = JSON.parse(File.read(DirManager.get_status_file))
 
     tasks = Config.instance.tasks.keys
-    tasks.select { |task| status[task.to_s] == 0 }.sort.each do |task|
+    tasks = tasks.select { |task| status[task.to_s] == 0 }
+
+    if tasks.empty?
+      raise Ex::TaskNotExecutedException
+    end
+
+    tasks.sort.each do |task|
       to_execute = Config.instance.publish_header(task)
-      next if to_execute.nil?
+      next unless to_execute
 
       Helper.set_internal_vars(task)
       to_execute = VarManager.instance.prepare_data(to_execute)
